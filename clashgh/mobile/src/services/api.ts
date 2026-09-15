@@ -260,6 +260,13 @@ export const endpoints = {
       body: { reference, success },
     }),
 
+  uploadScreenshot: (imageBase64: string, matchId: string) =>
+    api.request<{ url: string; bytes: number }>('/uploads/screenshot', {
+      method: 'POST',
+      body: { image_base64: imageBase64, match_id: matchId },
+      auth: true,
+    }),
+
   getMatch: (id: string) => api.request<MatchView>(`/matches/${id}`),
   submitResult: (
     id: string,

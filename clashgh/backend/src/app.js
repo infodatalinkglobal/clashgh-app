@@ -7,10 +7,12 @@ import { matchRouter } from './routes/matches.js';
 import { devAuthRouter } from './routes/devAuth.js';
 import { devPayRouter } from './routes/devPay.js';
 import { paystackWebhookHandler } from './routes/webhooks.js';
+import { uploadsRouter, mountLocalScreenshotStatic } from './routes/uploads.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
 export function createApp() {
   const app = express();
+  app.set('trust proxy', 1); // Render / preview proxies — correct req.protocol for upload URLs
 
   // Paystack webhook FIRST, with a raw body: the global express.json()
   // below would otherwise consume the body before the HMAC-SHA-512
@@ -51,6 +53,8 @@ export function createApp() {
   app.use('/api', adminRouter);
   app.use('/api/tournaments', tournamentRouter);
   app.use('/api/matches', matchRouter);
+  app.use('/api', uploadsRouter);
+  mountLocalScreenshotStatic(app);
 
   // Dev stubs: only outside production, and only in their dev modes.
   if (env.authProvider === 'stub' && env.nodeEnv !== 'production') {

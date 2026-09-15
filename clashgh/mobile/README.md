@@ -2,8 +2,8 @@
 
 Android-first tournament app for the ClashGH eFootball / FC Mobile / CODM / DLS
 league. Modules **2A — Auth Screens**, **2B — Home & Lobby**,
-**2C — Tournament View** and **2D — Match Room** are built; 2E–2F add the
-score-submit and wallet UIs.
+**2C — Tournament View**, **2D — Match Room** and **2E — Score Submit** are
+built; 2F adds the wallet (transaction history) UI.
 
 ## Stack
 
@@ -100,6 +100,27 @@ Polls every `Config.matchPollMs` (30s) only while the match is not
 completed, so the room code shows up within a sweep of activation
 without push notifications (3E adds those).
 
+## Score Submit (Module 2E)
+
+`screens/SubmitResultScreen.tsx` + `services/screenshots.ts`:
+
+1. **Screenshot first** (gallery or camera via `expo-image-picker`) — the
+   pick cannot be submitted without one (agent.md §3; the API also
+   rejects it with 400).
+2. Compression on-device with `expo-image-manipulator`: longest edge
+   ≤1280px, JPEG quality stepped 0.8 → 0.2 until **≤500KB** (agent.md §4
+   low-data rule). The size is shown in the preview.
+3. Pick **I won / I lost / Draw / Dispute** (+ a short reason for
+   dispute). Rules for what each pick does are explained inline.
+4. Confirm → `POST /uploads/screenshot` (base64 JPEG, auth) → URL →
+   `POST /matches/:id/result`. Upload happens only at confirm time.
+5. Outcome screen: completed (won / confirmed), waiting for opponent, or
+   under admin review.
+
+Storage is the backend's concern (`SCREENSHOT_STORAGE=local` writes to
+`backend/uploads-dev`; `cloudinary` is wired in `services/screenshots.js`
+for Module 3D — no app change needed).
+
 ### Web preview (dev only)
 
 `npx expo start --web` works for a quick look (needs `react-dom` +
@@ -111,11 +132,11 @@ seen from the browser.
 
 ```
 mobile/src/
-├── screens/       SignIn, Onboarding, Home (lobby list), Tournament (bracket), Join (UID + pay), Match (room), SubmitResult (2E), Me
+├── screens/       SignIn, Onboarding, Home (lobby list), Tournament (bracket), Join (UID + pay), Match (room), SubmitResult (screenshot + pick), Me
 ├── components/    ui.tsx (Screen, Button, TextField, Badge, Logo), Bracket.tsx
 ├── components/    ui.tsx — Screen, Button, TextField, Badge, Logo
 ├── navigation/    RootNavigator (auth-gated stack)
-├── services/      api.ts (typed client + models), auth.ts (providers)
+├── services/      api.ts (typed client + models), auth.ts (providers), screenshots.ts (pick → compress → upload)
 ├── store/         AuthContext (session state)
 ├── utils/         phone.ts (E.164, provider detection, username rules)
 ├── config.ts      API URL, auth mode, Supabase creds (EXPO_PUBLIC_*)

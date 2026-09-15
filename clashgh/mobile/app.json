@@ -31,6 +31,13 @@
         {
           "enableDefaultSchemes": true
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ClashGH needs your photos to attach the final score screenshot as proof of your match result.",
+          "cameraPermission": "ClashGH uses the camera to photograph the final score screen."
+        }
       ]
     ]
   }

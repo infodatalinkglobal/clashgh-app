@@ -63,6 +63,11 @@ export const env = {
   minEntryFeePesewas: Number(process.env.MIN_ENTRY_FEE_PESOWAS) || 1000,
   minPrizePesewas: Number(process.env.MIN_PRIZE_PESOWAS) || 1000,
   registrationPendingTtlMinutes: Number(process.env.REGISTRATION_PENDING_TTL_MINUTES) || 10,
+  // Screenshot storage: 'local' (dev, backend/uploads-dev) or 'cloudinary' (3D)
+  screenshotStorage: process.env.SCREENSHOT_STORAGE || 'local',
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || null,
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || null,
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || null,
   // Browser origins allowed in production (comma-separated; admin panel URL).
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };

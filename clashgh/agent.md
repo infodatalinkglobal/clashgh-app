@@ -244,7 +244,7 @@ Build modules in this exact order. Do not skip ahead. Each module must be functi
 | 2B | Home & Lobby      | Browse tournaments, filter by game, join button, entry fee display             | ✅ |
 | 2C | Tournament View   | Full bracket visualization, player position, prize pool + split, schedule      | ✅ |
 | 2D | Match Room        | Opponent info, scheduled start, room code reveal, UID display, instructions    | ✅ |
-| 2E | Score Submit      | Screenshot capture/upload, result pick (won/lost/draw/dispute)                 | ⬜ |
+| 2E | Score Submit      | Screenshot capture/upload, result pick (won/lost/draw/dispute)                 | ✅ |
 | 2F | Wallet            | Payout/fee history (read-only, derived from transactions), payout status       | ⬜ |
 
 ### PART 3: ADMIN & VERIFICATION
