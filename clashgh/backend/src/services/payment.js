@@ -70,7 +70,7 @@ export async function initiateEntryFeeCharge({ user, tournament }) {
  * reference settles exactly once. (1E: called by the verified
  * charge.success webhook; 1C: by the dev simulate endpoint.)
  */
-export async function settleChargeSuccess(reference) {
+export async function settleChargeSuccess(reference, chargeData = null) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -90,7 +90,11 @@ export async function settleChargeSuccess(reference) {
 
     if (rows.length === 0) {
       await client.query('COMMIT');
-      return { settled: false, reason: 'reference unknown, already settled, or payment window expired' };
+      // Money may have moved for a seat we no longer hold (MoMo approval
+      // after the 10-min window, reaper already released the slot, or the
+      // lobby filled meanwhile). That money must go straight back.
+      const late = await refundLateCharge(reference, chargeData);
+      return { settled: false, reason: late ? 'payment arrived after the window — refunded' : 'reference unknown or already settled', late_refund: late };
     }
 
     const reg = rows[0];
@@ -151,6 +155,43 @@ export async function settleChargeSuccess(reference) {
   } finally {
     client.release();
   }
+}
+
+/**
+ * A charge succeeded but there is no pending registration to settle. If
+ * this reference was never ledgered as an entry_fee (i.e. not a duplicate
+ * webhook), record a refund transaction and send the money back. Idempotent
+ * on the reference. Amount/user come from Paystack's event data (our
+ * metadata) because the registration row may already be gone.
+ */
+async function refundLateCharge(reference, chargeData) {
+  const userId = chargeData?.metadata?.user_id;
+  const tournamentId = chargeData?.metadata?.tournament_id ?? null;
+  const amount = Number(chargeData?.amount);
+  if (!userId || !Number.isInteger(amount) || amount <= 0) return null;
+
+  const { rows: [tx] } = await pool.query(
+    `INSERT INTO public.transactions
+       (user_id, tournament_id, type, amount_pesewas, status, paystack_reference, direction, description)
+     SELECT $1::uuid, $2::uuid, 'refund', $3::int, $4::public.transaction_status, $5::varchar, 'out',
+            'Payment arrived after the registration window — refunded'
+     WHERE NOT EXISTS (SELECT 1 FROM public.transactions WHERE paystack_reference = $5::varchar)
+     RETURNING id, user_id, amount_pesewas, tournament_id, type, description`,
+    [userId, tournamentId, amount, env.paystackMode === 'live' ? 'pending' : 'success', reference],
+  );
+  if (!tx) return null; // duplicate webhook — already handled
+  console.warn(`[payment] late charge ${reference} (${amount}p) for user ${userId} — refunding`);
+  if (env.paystackMode === 'live') {
+    try {
+      await initiateTransferForTx(tx);
+    } catch (err) {
+      // Stays 'pending' → visible in the admin failed/pending transfers list.
+      console.error(`[payment] late-charge refund ${tx.id} failed to initiate:`, err.message);
+    }
+  } else {
+    await notifyMoneySent(pool, tx);
+  }
+  return { tx: tx.id, amount_pesewas: amount };
 }
 
 /**

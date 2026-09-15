@@ -40,6 +40,9 @@ authRouter.patch('/me', requireAuth, asyncHandler(async (req, res) => {
       'Username must be 3-20 characters: lowercase letters, numbers, or underscore',
     );
   }
+  if (req.user.phone_verified && req.user.username) {
+    throw new ApiError(409, 'Your username is locked once onboarding is complete — contact support to change it');
+  }
   const { rows } = await pool.query(
     'UPDATE public.users SET username = $2 WHERE id = $1 RETURNING username',
     [req.user.id, username],

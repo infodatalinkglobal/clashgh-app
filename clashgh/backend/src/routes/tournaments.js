@@ -374,9 +374,14 @@ tournamentRouter.post('/:id/join', requireAuth, requireVerified, asyncHandler(as
       [id, req.user.id],
     );
     if (dup) {
-      const stillPending = dup.payment_status === 'pending' && new Date(dup.created_at) > new Date(Date.now() - env.registrationPendingTtlMinutes * 60_000);
-      await client.query('COMMIT');
-      throw new ApiError(409, stillPending ? 'You already have a pending registration — finish payment first' : 'You are already registered for this tournament');
+      const expiredPending = dup.payment_status === 'pending' && new Date(dup.created_at) <= new Date(Date.now() - env.registrationPendingTtlMinutes * 60_000);
+      if (!expiredPending) {
+        await client.query('COMMIT');
+        throw new ApiError(409, dup.payment_status === 'pending' ? 'You already have a pending registration — finish payment first' : 'You are already registered for this tournament');
+      }
+      // Their previous attempt timed out unpaid: drop it so they can retry.
+      // (A late charge for the old reference is refunded by refundLateCharge.)
+      await client.query('DELETE FROM public.registrations WHERE id = $1', [dup.id]);
     }
 
     const { rows: [countRow] } = await client.query(

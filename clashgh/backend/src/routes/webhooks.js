@@ -22,7 +22,7 @@ import { settleChargeSuccess, settleChargeFailure, updateTransferStatus } from '
  */
 
 const EVENT_HANDLERS = {
-  'charge.success': (d) => settleChargeSuccess(d.reference),
+  'charge.success': (d) => settleChargeSuccess(d.reference, d),
   'charge.failure': (d) => settleChargeFailure(d.reference),
   'transfer.success': (d) => updateTransferStatus(d.transfer_code, 'success'),
   'transfer.failed': (d) => updateTransferStatus(d.transfer_code, 'failed'),

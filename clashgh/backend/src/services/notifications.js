@@ -203,6 +203,13 @@ export const TEMPLATES = {
       text: `${p.player1_username} vs ${p.player2_username}\nReason: ${p.reason}\n\nResolve in the admin panel → Disputes.\nmatch_id: ${p.match_id}`,
     },
   }),
+  admin_money_invariant: (u, p) => ({
+    push: null,
+    email: {
+      subject: `[ClashGH] Money invariant VIOLATION (${p.violations.length})`,
+      text: `The hourly ledger check found:\n\n${p.violations.map((v) => `- ${v}`).join('\n')}\n\nReview transactions in the admin panel before the next payout run.`,
+    },
+  }),
   admin_payout_failed: (u, p) => ({
     push: null,
     email: {
@@ -272,6 +279,14 @@ async function deliver(row) {
   const dead = tokens.filter((_, i) => tickets[i]?.details?.error === 'DeviceNotRegistered').map((t) => t.token);
   if (dead.length) await pool.query('DELETE FROM public.push_tokens WHERE token = ANY($1)', [dead]);
   return { sent: true, devices: tokens.length - dead.length };
+}
+
+/** Housekeeping: delivered/skipped rows older than 30 days are just noise. */
+export async function purgeOldNotifications() {
+  const { rowCount } = await pool.query(
+    `DELETE FROM public.notifications WHERE status IN ('sent', 'skipped') AND created_at < now() - interval '30 days'`,
+  );
+  return rowCount;
 }
 
 export async function runNotificationsSweep(limit = 50) {

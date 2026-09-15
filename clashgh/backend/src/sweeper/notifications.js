@@ -1,4 +1,6 @@
-import { runNotificationsSweep, enqueueStartReminders } from '../services/notifications.js';
+import { runNotificationsSweep, enqueueStartReminders, purgeOldNotifications } from '../services/notifications.js';
+
+let ticks = 0;
 
 /** Notifications outbox dispatcher (Module 3E) — every 20s. */
 let timer = null;
@@ -13,6 +15,7 @@ export function startNotificationsSweeper() {
       try {
         await enqueueStartReminders();
         await runNotificationsSweep();
+        if (ticks++ % 180 === 0) await purgeOldNotifications(); // ~hourly
       } catch (err) {
         console.error('[notify] sweep error:', err.message);
       }

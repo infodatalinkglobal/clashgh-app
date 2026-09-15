@@ -365,3 +365,29 @@ Ranked findings from a full read of the money/state paths, with the fix:
 
 Known, accepted: rate limiter is per-process (single Render instance);
 "max 3 retries" means up to 4 transfer attempts total (documented behaviour).
+
+## Code review pass 2 — fixes applied
+
+1. **Late MoMo approval lost the player's money (critical).** Approval after
+   the 10-min window (common on MoMo) hit a deleted registration → webhook
+   `settled:false`, money stranded in the Paystack balance with no ledger row.
+   Now `settleChargeSuccess(reference, chargeData)` calls `refundLateCharge()`:
+   inserts a `refund` transaction (idempotent on the reference) and initiates
+   the transfer; the player gets `refund_issued`. Expired pendings are kept
+   24h (not deleted at 10min) so the row still exists; join now replaces a
+   player's own expired pending row instead of blocking them. Verified: late
+   settle → 1 refund row, replay → no-op, notification queued.
+2. **`screenshot_url` was trusted from the client (critical).** Any URL was
+   accepted as evidence. `isOurScreenshotUrl()` now allows only our Cloudinary
+   folder (`res.cloudinary.com/<cloud>/image/upload/…/clashgh/screenshots/`)
+   or `/uploads-dev/*.jpg` locally. Verified: external URL → 400.
+3. Money-invariant violations now email the admin (`admin_money_invariant`)
+   instead of only logging.
+4. Username locked after onboarding (was freely renamable → audit trail churn).
+5. `pg` pool: `statement_timeout` 20s, connection/idle timeouts — a hung
+   query can no longer wedge a sweeper behind its in-flight guard.
+6. Notifications outbox purged of sent/skipped rows >30 days (hourly).
+
+Checked and fine: `max_players` is DB-constrained to 4/8/16/32/64 so the
+bracket math is safe; dispute-refund on in-progress cups refunds everyone by
+design; match screen polling stops on completion.

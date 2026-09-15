@@ -1,4 +1,5 @@
 import { pool } from '../db/pool.js';
+import { env } from '../config/env.js';
 import { notify, notifyMany } from './notifications.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { UUID_RE } from '../utils/validate.js';
@@ -231,6 +232,26 @@ async function completeMatchTx(client, match, winnerId) {
 // ---------------------------------------------------------------------------
 
 /**
+ * Only URLs our own upload path produced are evidence. Anything else
+ * (a random image on the internet, a link the admin's browser would
+ * follow) is rejected. Cloudinary: https://res.cloudinary.com/<cloud>/…
+ * Local dev: <any host>/uploads-dev/<file>.jpg
+ */
+export function isOurScreenshotUrl(url) {
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  if (env.screenshotStorage === 'cloudinary') {
+    return u.protocol === 'https:' && u.hostname === 'res.cloudinary.com'
+      && u.pathname.startsWith(`/${env.cloudinaryCloudName}/image/upload/`) && u.pathname.includes('/clashgh/screenshots/');
+  }
+  return /^\/uploads-dev\/[A-Za-z0-9_]+\.jpg$/.test(u.pathname) || (env.nodeEnv !== 'production' && /\/img\/clashgh\/screenshots\//.test(u.pathname));
+}
+
+/**
  * POST /api/matches/:id/result — the player's pick + screenshot.
  */
 export async function submitResult({ matchId, userId, pick, screenshotUrl, reason = null }) {
@@ -245,6 +266,9 @@ export async function submitResult({ matchId, userId, pick, screenshotUrl, reaso
     throw new ApiError(400, 'reason must be a string of at most 500 characters');
   }
   screenshotUrl = screenshotUrl.trim();
+  if (!isOurScreenshotUrl(screenshotUrl)) {
+    throw new ApiError(400, 'screenshot_url must come from the ClashGH upload endpoint');
+  }
 
   const client = await pool.connect();
   try {
@@ -629,7 +653,8 @@ export async function runMoneyInvariantCheck() {
   }
 
   if (violations.length > 0) {
-    for (const v of violations) console.error(`[money-invariant] VIOLATION: ${v} — admin attention required (alert lands in 3E)`);
+    for (const v of violations) console.error(`[money-invariant] VIOLATION: ${v} — admin attention required`);
+    await notify(pool, { userId: null, template: 'admin_money_invariant', payload: { violations } });
   } else {
     console.log(`[money-invariant] OK — checked ${completed.length} completed + ${cancelled.length} cancelled tournament(s), no violations`);
   }
