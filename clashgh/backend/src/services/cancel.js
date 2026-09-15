@@ -1,4 +1,6 @@
 import { pool } from '../db/pool.js';
+import { notify } from './notifications.js';
+import { notifyMoneySent } from './payment.js';
 import { env } from '../config/env.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { UUID_RE } from '../utils/validate.js';
@@ -61,6 +63,18 @@ export async function cancelTournament(tournamentId, adminId, { allowInProgress 
         [r.user_id, tournamentId, t.entry_fee_pesewas, isLive ? 'pending' : 'success', r.payment_reference, `Tournament cancelled — entry fee refunded (${t.title})`],
       );
       refundTxRows.push(txRow);
+      // 3E: stub refunds succeed instantly → refund_issued now; live ones
+      // get refund_issued from the transfer.success webhook. Everyone gets
+      // the cancellation push immediately either way.
+      const { rows: [u] } = await client.query('SELECT phone FROM public.users WHERE id = $1', [r.user_id]);
+      await notify(client, {
+        userId: r.user_id,
+        template: 'tournament_cancelled',
+        payload: { tournament_title: t.title, amount_pesewas: t.entry_fee_pesewas, phone: u?.phone, tournament_id: t.id },
+      });
+      if (!isLive) {
+        await notifyMoneySent(client, { ...txRow, type: 'refund', tournament_id: t.id, description: 'refund' });
+      }
     }
 
     await client.query(`UPDATE public.tournaments SET status = 'cancelled' WHERE id = $1`, [tournamentId]);

@@ -4,9 +4,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import { rateLimit } from '../middleware/rateLimit.js';
 import { toE164, detectProvider } from '../utils/phone.js';
-import { USERNAME_RE, OTP_RE } from '../utils/validate.js';
-import { createOtpChallenge, checkOtpAttempt, completePhoneVerification } from '../services/otp.js';
-import { sms } from '../services/sms.js';
+import { USERNAME_RE } from '../utils/validate.js';
+import { paystack } from '../services/paystack.js';
 import { env } from '../config/env.js';
 
 export const authRouter = Router();
@@ -49,74 +48,70 @@ authRouter.patch('/me', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 /**
- * POST /api/me/phone/request-otp — send the one-time verification code.
- * Rate-limited to 3 per 10 minutes per user (keeps SMS cost + abuse down).
+ * Onboarding step 2 — the MoMo number (Module 3E, replaces SMS OTP).
+ *
+ * Decision (2026-09-15): no OTP. The ONE number that pays and receives
+ * is entered once, confirmed by the player, and then locked. Proof of
+ * ownership is money movement: in live mode Paystack resolves the
+ * registered account name so the player sees "MTN · KOFI MENSAH" before
+ * confirming, and the first entry-fee charge is approved on that very
+ * phone. A wrong number cannot pay, so it cannot play.
+ *
+ * POST /api/me/momo/resolve  { phone }            → { phone, momo_provider, account_name }
+ * PUT  /api/me/momo          { phone }            → locks it (phone_verified=true)
  */
 authRouter.post(
-  '/me/phone/request-otp',
+  '/me/momo/resolve',
   requireAuth,
-  rateLimit({ windowMs: 10 * MIN, max: 3, keyFn: (req) => `otp-req:${req.user.id}` }),
+  rateLimit({ windowMs: 10 * MIN, max: 10, keyFn: (req) => `momo-resolve:${req.user.id}` }),
   asyncHandler(async (req, res) => {
-    if (req.user.phone_verified) {
-      throw new ApiError(409, 'Phone number already verified — no repeated OTPs');
+    const { phone, provider } = parseMomo(req.body?.phone);
+    let accountName = null;
+    if (env.paystackMode === 'live') {
+      try {
+        ({ account_name: accountName } = await paystack.resolveMomoAccount({ phone, provider }));
+      } catch (err) {
+        console.warn('[momo] name resolution unavailable:', err.message);
+      }
     }
-    const phone = toE164(req.body?.phone);
-    if (!phone) throw new ApiError(400, 'Enter a valid Ghana number (0XXXXXXXXX or +233XXXXXXXXX)');
-    const provider = detectProvider(phone);
-    if (!provider) throw new ApiError(400, 'That number is not a supported MoMo number');
-
-    const otp = await createOtpChallenge(phone);
-    await sms.send({
-      to: phone,
-      body: `Your ClashGH verification code is ${otp}. Valid for ${env.otpTtlMinutes} minutes. Do not share it.`,
-    });
-    res.json({ success: true, data: null, message: 'Verification code sent via SMS' });
-  }),
-);
-
-const VERIFY_MESSAGES = {
-  no_challenge: 'Request a verification code first',
-  expired: 'Code expired — request a new one',
-  locked: 'Too many wrong attempts — request a new code',
-  mismatch: (remaining) => `Wrong code — ${remaining} attempt(s) left`,
-};
-
-/**
- * POST /api/me/phone/verify — confirm the one-time code, then the
- * account's phone number is set and locked (phone_verified=true).
- */
-authRouter.post(
-  '/me/phone/verify',
-  requireAuth,
-  rateLimit({ windowMs: 10 * MIN, max: 10, keyFn: (req) => `otp-verify:${req.user.id}` }),
-  asyncHandler(async (req, res) => {
-    if (req.user.phone_verified) {
-      throw new ApiError(409, 'Phone number already verified');
-    }
-    const phone = toE164(req.body?.phone);
-    const { otp } = req.body || {};
-    if (!phone) throw new ApiError(400, 'Enter your phone number');
-    if (typeof otp !== 'string' || !OTP_RE.test(otp)) throw new ApiError(400, 'Code must be 6 digits');
-    const provider = detectProvider(phone);
-    if (!provider) throw new ApiError(400, 'That number is not a supported MoMo number');
-
-    const result = await checkOtpAttempt(phone, otp);
-    if (!result.ok) {
-      const message =
-        typeof VERIFY_MESSAGES[result.reason] === 'function'
-          ? VERIFY_MESSAGES[result.reason](result.remaining)
-          : VERIFY_MESSAGES[result.reason];
-      throw new ApiError(400, message);
-    }
-
-    await completePhoneVerification(req.user.id, phone, provider);
     res.json({
       success: true,
-      data: { phone, momo_provider: provider, phone_verified: true },
-      message: 'Phone verified — you can now join tournaments',
+      data: { phone, momo_provider: provider, account_name: accountName },
+      message: accountName ? `Registered to ${accountName}` : 'Number looks valid — confirm it is yours',
     });
   }),
 );
+
+authRouter.put('/me/momo', requireAuth, asyncHandler(async (req, res) => {
+  if (req.user.phone_verified) {
+    throw new ApiError(409, 'Your MoMo number is already set — contact support to change it');
+  }
+  const { phone, provider } = parseMomo(req.body?.phone);
+  const { rows: [taken] } = await pool.query(
+    'SELECT 1 FROM public.users WHERE phone = $1 AND id <> $2',
+    [phone, req.user.id],
+  );
+  if (taken) throw new ApiError(409, 'That number is already linked to another ClashGH account');
+
+  await pool.query(
+    `UPDATE public.users SET phone = $2, momo_provider = $3, phone_verified = true
+     WHERE id = $1 AND phone_verified = false`,
+    [req.user.id, phone, provider],
+  );
+  res.json({
+    success: true,
+    data: { phone, momo_provider: provider, phone_verified: true },
+    message: 'MoMo number saved — you can now join tournaments',
+  });
+}));
+
+function parseMomo(raw) {
+  const phone = toE164(raw);
+  if (!phone) throw new ApiError(400, 'Enter a valid Ghana number (0XXXXXXXXX or +233XXXXXXXXX)');
+  const provider = detectProvider(phone);
+  if (!provider) throw new ApiError(400, 'That number is not a supported MoMo number (MTN, Telecel, AirtelTigo)');
+  return { phone, provider };
+}
 
 /**
  * GET /api/me/transactions?limit=&offset=  (Module 2F Wallet)

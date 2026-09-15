@@ -41,7 +41,4 @@ export const Config = {
 
   /** Polling cadence for match screens (agent.md §14: 30–60s, be modest). */
   matchPollMs: 30_000,
-
-  /** OTP code expiry mirrors the backend (10 minutes). */
-  otpExpiryMinutes: 10,
 };

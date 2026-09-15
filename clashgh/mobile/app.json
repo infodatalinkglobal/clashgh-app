@@ -38,6 +38,13 @@
           "photosPermission": "ClashGH needs your photos to attach the final score screenshot as proof of your match result.",
           "cameraPermission": "ClashGH uses the camera to photograph the final score screen."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#F5B301",
+          "defaultChannel": "default"
+        }
       ]
     ]
   }

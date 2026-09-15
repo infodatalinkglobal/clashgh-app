@@ -1,6 +1,6 @@
 import { pool } from '../db/pool.js';
 import { env } from '../config/env.js';
-import { initiateTransferForTx, MAX_PAYOUT_RETRIES } from '../services/payment.js';
+import { initiateTransferForTx, notifyPayoutFailed, MAX_PAYOUT_RETRIES } from '../services/payment.js';
 
 /**
  * Payout retry sweeper (runs ~every 60s) — agent.md §9 step 6.
@@ -19,7 +19,7 @@ let timer = null;
 
 export async function runPayoutRetrySweep() {
   const { rows } = await pool.query(
-    `SELECT id, user_id, amount_pesewas, attempts
+    `SELECT id, user_id, amount_pesewas, attempts, tournament_id
      FROM public.transactions
      WHERE type = 'payout'
        AND status = 'failed'
@@ -62,6 +62,7 @@ export async function runPayoutRetrySweep() {
           [tx.id, attempts],
         );
         console.error(`[sweeper] payout ${tx.id} FINAL FAILURE after ${attempts} retries — admin attention required`);
+        await notifyPayoutFailed(pool, { ...tx, attempts });
       } else {
         const due = new Date(Date.now() + [15, 60, 360][Math.min(attempts, 2)] * 60_000);
         await pool.query(

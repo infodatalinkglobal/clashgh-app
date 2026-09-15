@@ -11,7 +11,7 @@ Modules **1A — Database Schema**, **1B — Auth API**, **1C — Tournament API
 | `migrations/003_phone_verifications.sql` | One-time OTP challenge table (hashed OTP, expiry, attempt count) |
 | `migrations/004_transactions_retry.sql` | `attempts` + `next_retry_at` on transactions (payout retry backoff) |
 | `seeds/001_dev_seed.sql` | Dev data: 1 admin + 8 players, 2 tournaments, a full 8-slot bracket (idempotent) |
-| `src/` | Express API (ESM, no TypeScript): config, db pool, middleware (auth / rate-limit / errors), routes (1B auth, 1C tournaments, 1D bracket view, 1E webhook + admin payout, 1F matches + admin dispute resolve), services (OTP, pluggable SMS, Paystack client, payment/escrow, bracket engine, match flow, cancel), sweepers (pending-TTL reaper, bracket-gen safety sweep, payout retry, match flow + hourly money invariants) |
+| `src/` | Express API (ESM, no TypeScript): config, db pool, middleware (auth / rate-limit / errors), routes (1B auth, 1C tournaments, 1D bracket view, 1E webhook + admin payout, 1F matches + admin dispute resolve), services (Paystack client, payment/escrow, bracket engine, match flow, cancel, notifications outbox + pluggable mail/push), sweepers (pending-TTL reaper, bracket-gen safety sweep, payout retry, match flow + hourly money invariants, notifications dispatcher) |
 | `src/routes/adminDashboard.js` | Modules 3B/3C/3F admin API: overview (action queue, lobby health, revenue), tournaments list/detail, dispute queue with dispute-rate priority, players + ban/unban (audited), audit log, analytics with expansion gates |
 | `GET /api/me/transactions` (in `src/routes/auth.js`) | Module 2F wallet history: user's ledger rows newest-first (no `platform_fee`), + lifetime totals (fees / winnings / refunds / pending out) |
 | `src/routes/uploads.js` + `src/services/screenshots.js` | `POST /api/uploads/screenshot` (auth, base64 JPEG ≤600KB) → public URL. Storage pluggable: `local` (dev, `uploads-dev/`) or `cloudinary` (3D) |
@@ -138,8 +138,10 @@ whose recipient username matches `/fail/i` fail, which drives the payout retry b
 | POST | `/api/dev/paystack/simulate-charge` | — | Dev stub charge settle (stub mode only — stands in for 1E's verified webhook) |
 | GET | `/api/me` | Bearer | Current profile (1B) |
 | PATCH | `/api/me` | Bearer | Set username (3–20, `[a-z0-9_]`) (1B) |
-| POST | `/api/me/phone/request-otp` | Bearer | Send one-time code (3 per 10 min) (1B) |
-| POST | `/api/me/phone/verify` | Bearer | Verify code → phone set + locked (10 per 10 min; 5 wrong tries per code) (1B) |
+| POST | `/api/me/momo/resolve` | Bearer | Validate MoMo number, detect provider, resolve account name (live) (3E) |
+| PUT | `/api/me/momo` | Bearer | Set + lock the MoMo number, no OTP (3E) |
+| PUT/DELETE | `/api/me/push-token` | Bearer | Register / remove this device's Expo push token (3E) |
+| GET | `/api/me/notifications` | Bearer | Recent in-app notifications (3E) |
 | GET | `/api/admin/ping` | Bearer + admin | Proves admin guard (1B) |
 | POST | `/api/tournaments` | Bearer + admin | Create (enforces min entry fee ₵10 + min prize floor ₵10 runner-up) (1C) |
 | GET | `/api/tournaments` | — | List: `?game=&status=&limit=&offset=`, computed lobby state + prize projection (1C) |
@@ -180,8 +182,8 @@ Live API (port 3000) against the sandbox PostgreSQL 17 + seeded database:
 - [x] Health endpoint; 401 on missing / garbage / tampered / expired token; 403 player-on-admin-route; 404 unknown route
 - [x] Dev sign-in: new email creates the profile like the 002 trigger would (201), existing user re-signs in (200); JWT verified with HS256 + issuer + audience
 - [x] Username: valid → 200, `Ab` → 400, taken `kofi_gh` → 409
-- [x] OTP happy path: request accepted in local (`0244000001`) and E.164 (`+233…`) formats → mock SMS logged → wrong code → 400 with attempts-left → correct code → 200; `phone` / `momo_provider` / `phone_verified` set; challenge row deleted
-- [x] One-time rule: request-otp after verification → 409
+- [x] ~~OTP happy path~~ superseded by 3E: MoMo number set via `POST /me/momo/resolve` + `PUT /me/momo`, no SMS
+- [x] One-time rule: `PUT /me/momo` after the number is set → 409
 - [x] Rejections: unsupported prefix `023…` → 400; verify with no challenge → 400
 - [x] Lockout: 5 wrong codes → "Too many wrong attempts"; correct code still rejected while locked; a fresh request rotates the challenge and unlocks (verified end-to-end)
 - [x] Expiry: backdated challenge → "Code expired" even with the correct code
@@ -252,3 +254,60 @@ Live API against the seeded sandbox database:
 - Status fields: Postgres ENUM types (extending one = new migration)
 - RLS is enabled on all business tables with **no policies** = default deny. The Express API uses the service role, which bypasses RLS. No client ever talks to Postgres directly.
 - Every API response: `{ success, data, message }` — no exceptions
+
+## Module 3E — Notifications (email + push) & MoMo number without OTP
+
+**Decision (2026-09-15):** no SMS. Email (Resend) for money/outcome events,
+Expo push for time-sensitive ones. The MoMo number is set once in onboarding
+and proven by money movement, not a code.
+
+### MoMo number (replaces OTP)
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/me/momo/resolve {phone}` | Validates + detects provider; in `PAYSTACK_MODE=live` resolves the registered account name via Paystack `/bank/resolve` so the player sees "MTN · KOFI MENSAH" before confirming |
+| `PUT /api/me/momo {phone}` | Locks the number (`phone_verified=true`). 409 if already set or linked to another account |
+
+The first entry-fee charge is approved on that phone — a wrong number cannot
+pay, so it cannot play. `users.phone_verified` keeps its name; every
+`requireVerified` route is unchanged.
+
+### Outbox (`notifications` table)
+`notify(q, {userId, template, payload})` inserts one row per channel using
+the caller's transaction client, so the row commits/rolls back with the
+business change. The dispatcher sweeper (20s) claims due rows with
+`FOR UPDATE SKIP LOCKED`, renders the template, sends, and marks
+`sent | skipped | failed`. Provider errors retry with backoff 1m/5m/30m/2h/6h,
+5 attempts. `userId = null` = admin alert → `ADMIN_ALERT_EMAIL`.
+
+| Template | Push | Email | Fired from |
+|---|---|---|---|
+| `entry_receipt` | | ✓ | charge settled |
+| `lobby_full` | ✓ | | last seat paid |
+| `start_reminder` | ✓ | | 30 min and 5 min before `starts_at` (idempotent, sweeper) |
+| `match_ready` (room code) | ✓ | ✓ | match activated / replay |
+| `opponent_submitted` | ✓ | | first pick in |
+| `match_result` | ✓ | | match completed |
+| `dispute_opened` | ✓ | | any dispute path |
+| `dispute_resolved` | ✓ | ✓ | admin award / replay |
+| `payout_sent` | ✓ | ✓ | transfer success (stub: immediately) |
+| `tournament_cancelled` | ✓ | | cancel |
+| `refund_issued` | ✓ | ✓ | refund transfer success |
+| `admin_dispute`, `admin_payout_failed` | | ✓ (admin) | dispute / final payout failure |
+
+Push: `PUT/DELETE /api/me/push-token {token, platform}`; `GET /api/me/notifications`
+returns the player's recent push-channel rows as an in-app inbox. Dead
+tokens (`DeviceNotRegistered`) are pruned automatically.
+
+Providers: `src/services/mail.js` (`mock` | `resend`), `src/services/push.js`
+(`mock` | `expo`). Both are single `fetch` calls — no SDKs.
+
+### What was verified (3E test log)
+Full lifecycle on a 4-player ₵10 cup (stub Paystack, mock providers), all
+via the outbox: receipt → lobby_full ×4 → match_ready ×4 (email w/ room code
++ push to the one registered device) → opponent_submitted → match_result →
+dispute (both "won") → admin_dispute alert (skipped: no ADMIN_ALERT_EMAIL) →
+dispute_resolved ×2 → final → payout_sent (₵28 champion / ₵8 runner-up, email
++ push). Cancel of the 8-player cup → tournament_cancelled ×8 + refund_issued
+×8. Provider failure (bad Resend key) → row stays `pending`, `attempts=1`,
+`next_attempt_at` +1 min, error recorded. Onboarding: duplicate number → 409,
+second change → 409.

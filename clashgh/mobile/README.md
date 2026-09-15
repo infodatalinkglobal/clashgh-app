@@ -194,3 +194,16 @@ mobile/src/
   lands with that module
 - Screenshot quality: full score screen, no crops; compress ≤ 500KB
   before upload (agent.md §14)
+
+## Module 3E — onboarding without OTP, push notifications
+
+- **Onboarding** (`screens/OnboardingScreen.tsx`): username + MoMo number →
+  `POST /me/momo/resolve` (shows the Paystack-registered account name in live
+  mode) → confirm → `PUT /me/momo`. No code to type; the first entry fee is
+  approved on that phone and that is the proof of ownership.
+- **Push** (`services/push.ts`): after sign-in + onboarding, `registerForPush()`
+  asks permission, gets the Expo token and `PUT /me/push-token`s it. Sign-out
+  removes it. Web and emulators are a silent no-op. Needs an EAS `projectId`
+  in `app.json > extra.eas` for production tokens (`eas init` sets it).
+- Deps: `expo-notifications`, `expo-device` (SDK 57 versions). Plugin
+  configured in `app.json` (gold accent, `default` channel).

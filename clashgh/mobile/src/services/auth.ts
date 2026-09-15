@@ -19,7 +19,7 @@ import { api, ApiError, endpoints, type Profile } from './api';
  *    built so this swap needs zero backend route changes).
  *
  * After either path, the app owns: token storage, profile bootstrap,
- * one-time onboarding (username + MoMo phone + OTP) and sign-out.
+ * one-time onboarding (username + MoMo number, no OTP) and sign-out.
  */
 
 const TOKEN_KEY = 'clashgh.auth.token';
@@ -181,19 +181,19 @@ class AuthService {
     return p;
   }
 
-  // -- onboarding (one-time: username + MoMo phone + OTP) -------------------
+  // -- onboarding (one-time: username + MoMo number) -------------------------
 
   async setProfileUsername(username: string): Promise<string> {
     const { username: saved } = await endpoints.updateUsername(username);
     return saved;
   }
 
-  async requestPhoneOtp(phoneE164: string): Promise<void> {
-    await endpoints.requestOtp(phoneE164);
+  async resolveMomo(phoneE164: string) {
+    return endpoints.resolveMomo(phoneE164);
   }
 
-  async verifyPhoneOtp(phoneE164: string, otp: string): Promise<void> {
-    await endpoints.verifyOtp(phoneE164, otp);
+  async saveMomo(phoneE164: string): Promise<void> {
+    await endpoints.saveMomo(phoneE164);
   }
 
   async refreshProfile(): Promise<Profile> {

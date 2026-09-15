@@ -202,6 +202,14 @@ export interface RegistrationView {
 export type TransactionType = 'entry_fee' | 'payout' | 'refund' | 'platform_fee';
 export type TransactionStatus = 'pending' | 'success' | 'failed';
 
+export interface NotificationRow {
+  id: string;
+  template: string;
+  payload: Record<string, unknown>;
+  status: 'pending' | 'sent' | 'failed' | 'skipped';
+  created_at: string;
+}
+
 export interface TransactionRow {
   id: string;
   type: TransactionType;
@@ -257,13 +265,25 @@ export const endpoints = {
   me: () => api.request<{ profile: Profile }>('/me', { auth: true }),
   updateUsername: (username: string) =>
     api.request<{ username: string }>('/me', { method: 'PATCH', body: { username }, auth: true }),
-  requestOtp: (phone: string) =>
-    api.request<null>('/me/phone/request-otp', { method: 'POST', body: { phone }, auth: true }),
-  verifyOtp: (phone: string, otp: string) =>
-    api.request<{ phone: string; momo_provider: MomoProvider; phone_verified: boolean }>(
-      '/me/phone/verify',
-      { method: 'POST', body: { phone, otp }, auth: true },
+  // MoMo number (3E — no OTP: resolve the account name, then the player confirms once)
+  resolveMomo: (phone: string) =>
+    api.request<{ phone: string; momo_provider: MomoProvider; account_name: string | null }>(
+      '/me/momo/resolve',
+      { method: 'POST', body: { phone }, auth: true },
     ),
+  saveMomo: (phone: string) =>
+    api.request<{ phone: string; momo_provider: MomoProvider; phone_verified: boolean }>(
+      '/me/momo',
+      { method: 'PUT', body: { phone }, auth: true },
+    ),
+
+  // Push (3E)
+  registerPushToken: (token: string, platform: 'android' | 'ios' | 'web') =>
+    api.request<{ token: string }>('/me/push-token', { method: 'PUT', body: { token, platform }, auth: true }),
+  removePushToken: (token: string) =>
+    api.request<null>('/me/push-token', { method: 'DELETE', body: { token }, auth: true }),
+  myNotifications: (limit = 30) =>
+    api.request<{ notifications: NotificationRow[] }>(`/me/notifications?limit=${limit}`, { auth: true }),
 
   myTransactions: (params?: { limit?: number; offset?: number }) => {
     const qs = new URLSearchParams();

@@ -6,7 +6,8 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import type { Profile } from '../services/api';
+import type { MomoProvider, Profile } from '../services/api';
+import { registerForPush, unregisterPush } from '../services/push';
 import { authService, setOnUnauthorized } from '../services/auth';
 
 /**
@@ -26,8 +27,8 @@ interface AuthContextValue {
   signInWithEmail: (email: string) => Promise<void>;
   handleAuthUrl: (url: string) => Promise<void>;
   setProfileUsername: (username: string) => Promise<void>;
-  requestPhoneOtp: (phone: string) => Promise<void>;
-  verifyPhoneOtp: (phone: string, otp: string) => Promise<void>;
+  resolveMomo: (phone: string) => Promise<{ account_name: string | null; momo_provider: MomoProvider }>;
+  saveMomo: (phone: string) => Promise<void>;
   signOut: () => Promise<void>;
   dismissError: () => void;
 }
@@ -66,11 +67,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setOnUnauthorized(null);
   }, []);
 
-  const run = useCallback(async (fn: () => Promise<void>) => {
+  // 3E: once signed in + onboarded, register this device for push.
+  useEffect(() => {
+    if (profile?.phone_verified) void registerForPush();
+  }, [profile?.id, profile?.phone_verified]);
+
+  const run = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
     setBusy(true);
     setError(null);
     try {
-      await fn();
+      return await fn();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       throw err;
@@ -109,16 +115,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const p = await authService.refreshProfile();
         setProfile(p);
       },
-      requestPhoneOtp: (phone) => run(() => authService.requestPhoneOtp(phone)),
-      verifyPhoneOtp: async (phone, otp) => {
+      resolveMomo: (phone) => run(() => authService.resolveMomo(phone)),
+      saveMomo: async (phone) => {
         await run(async () => {
-          await authService.verifyPhoneOtp(phone, otp);
+          await authService.saveMomo(phone);
           const p = await authService.refreshProfile();
           setProfile(p);
         });
       },
       signOut: () =>
         run(async () => {
+          await unregisterPush();
           await authService.signOut();
           setProfile(null);
         }),

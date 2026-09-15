@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { pool } from '../db/pool.js';
+import { notify, notifyMany } from './notifications.js';
 import { env } from '../config/env.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { computeSplit } from '../utils/prize.js';
@@ -83,7 +84,7 @@ export async function settleChargeSuccess(reference) {
          AND r.created_at > now() - make_interval(mins => $2)
          AND t.id = r.tournament_id
        RETURNING r.id, r.tournament_id, r.user_id,
-                 t.entry_fee_pesewas AS fee, t.title AS title, t.max_players`,
+                 t.entry_fee_pesewas AS fee, t.title AS title, t.max_players, t.starts_at`,
       [reference, env.registrationPendingTtlMinutes],
     );
 
@@ -110,6 +111,24 @@ export async function settleChargeSuccess(reference) {
        RETURNING t.id`,
       [reg.tournament_id],
     );
+
+    // 3E: receipt to the payer; "lobby full" to every paid player.
+    const { rows: [payer] } = await client.query('SELECT phone FROM public.users WHERE id = $1', [reg.user_id]);
+    await notify(client, {
+      userId: reg.user_id,
+      template: 'entry_receipt',
+      payload: { tournament_title: reg.title, amount_pesewas: reg.fee, phone: payer?.phone, starts_at: reg.starts_at, reference, tournament_id: reg.tournament_id },
+    });
+    if (fullCheck !== undefined) {
+      const { rows: players } = await client.query(
+        `SELECT user_id FROM public.registrations WHERE tournament_id = $1 AND payment_status = 'paid'`,
+        [reg.tournament_id],
+      );
+      await notifyMany(client, players.map((p) => p.user_id), {
+        template: 'lobby_full',
+        payload: { tournament_title: reg.title, starts_at: reg.starts_at, tournament_id: reg.tournament_id },
+      });
+    }
 
     await client.query('COMMIT');
 
@@ -205,7 +224,7 @@ export const initiateRefundTransfer = initiateTransferForTx;
  */
 export async function updateTransferStatus(transferCode, newStatus) {
   const { rows } = await pool.query(
-    `SELECT id, type, attempts FROM public.transactions
+    `SELECT id, type, attempts, user_id, amount_pesewas, description, tournament_id FROM public.transactions
      WHERE paystack_transfer_code = $1 AND status = 'pending'`,
     [transferCode],
   );
@@ -216,6 +235,7 @@ export async function updateTransferStatus(transferCode, newStatus) {
 
   if (newStatus === 'success') {
     await pool.query('UPDATE public.transactions SET status = $2 WHERE id = $1', [tx.id, 'success']);
+    await notifyMoneySent(pool, tx);
     return { applied: true, tx: tx.id };
   }
 
@@ -234,9 +254,8 @@ export async function updateTransferStatus(transferCode, newStatus) {
     [tx.id, 'failed', nextRetryAt],
   );
   if (finalFailure) {
-    console.error(
-      `[payment] PAYOUT ${tx.id} FINAL FAILURE after ${tx.attempts} retries — admin attention required (alert lands in 3E)`,
-    );
+    console.error(`[payment] PAYOUT ${tx.id} FINAL FAILURE after ${tx.attempts} retries — admin attention required`);
+    await notifyPayoutFailed(pool, tx);
   }
   return { applied: true, tx: tx.id, final_failure: finalFailure, next_retry_at: nextRetryAt };
 }
@@ -316,6 +335,7 @@ export async function executePayout(tournamentId, { force = false } = {}) {
           [userId, t.id, finalMatch.id, amount, isLive ? 'pending' : 'success', `${label} — ${t.title}`],
         );
         if (isLive) toTransfer.push({ ...tx, isRetry: false });
+        else await notifyMoneySent(client, { ...tx, type: 'payout', tournament_id: t.id, description: label });
       }
       await client.query(
         `INSERT INTO public.transactions
@@ -335,6 +355,8 @@ export async function executePayout(tournamentId, { force = false } = {}) {
             `UPDATE public.transactions SET status = 'success', attempts = attempts + 1, next_retry_at = NULL WHERE id = $1`,
             [ex.id],
           );
+          const { rows: [row] } = await client.query('SELECT * FROM public.transactions WHERE id = $1', [ex.id]);
+          await notifyMoneySent(client, row);
         }
       }
     }
@@ -370,4 +392,37 @@ export async function executePayout(tournamentId, { force = false } = {}) {
   } finally {
     client.release();
   }
+}
+
+// ---------------------------------------------------------------------------
+// 3E notification helpers
+// ---------------------------------------------------------------------------
+
+/** payout_sent / refund_issued for a SUCCESSFUL transfer row. */
+export async function notifyMoneySent(q, tx) {
+  const { rows: [ctx] } = await q.query(
+    `SELECT u.phone, u.momo_provider, t.title FROM public.users u
+     LEFT JOIN public.tournaments t ON t.id = $2 WHERE u.id = $1`,
+    [tx.user_id, tx.tournament_id],
+  );
+  const payload = { tournament_title: ctx?.title ?? '', amount_pesewas: tx.amount_pesewas, phone: ctx?.phone, momo_provider: ctx?.momo_provider, tx_id: tx.id };
+  if (tx.type === 'refund') {
+    await notify(q, { userId: tx.user_id, template: 'refund_issued', payload });
+  } else if (tx.type === 'payout') {
+    const label = /runner/i.test(tx.description ?? '') ? 'Runner-up prize' : 'Champion prize';
+    await notify(q, { userId: tx.user_id, template: 'payout_sent', payload: { ...payload, label } });
+  }
+}
+
+export async function notifyPayoutFailed(q, tx) {
+  const { rows: [ctx] } = await q.query(
+    `SELECT u.username, u.phone, t.title FROM public.users u
+     LEFT JOIN public.tournaments t ON t.id = $2 WHERE u.id = $1`,
+    [tx.user_id, tx.tournament_id],
+  );
+  await notify(q, {
+    userId: null,
+    template: 'admin_payout_failed',
+    payload: { tx_id: tx.id, amount_pesewas: tx.amount_pesewas, username: ctx?.username, phone: ctx?.phone, tournament_title: ctx?.title, attempts: tx.attempts },
+  });
 }

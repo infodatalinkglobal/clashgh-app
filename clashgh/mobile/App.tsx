@@ -3,6 +3,10 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AuthProvider } from './src/store/AuthContext';
+import { configureForegroundNotifications } from './src/services/push';
+
+// 3E: show push banners while the app is in the foreground (no-op on web).
+void configureForegroundNotifications();
 
 /**
  * ClashGH — entry point.

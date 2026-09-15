@@ -255,7 +255,7 @@ Build modules in this exact order. Do not skip ahead. Each module must be functi
 | 3B | Dispute System       | Flag disputes, lock payouts, auto-flag high-dispute-rate players, admin resolution (award player OR cancel+refund) | ✅ |
 | 3C | Admin Dashboard      | Web panel: action queue, lobby health, tournaments, players, disputes, revenue, admin alerts       | ✅ |
 | 3D | Screenshot Storage   | Cloudinary upload integration, image compression, URL storage        | ⬜ |
-| 3E | Notifications        | Push + SMS: scheduled-start reminders (30min/5min before), match start, opponent ready, payout sent | ⬜ |
+| 3E | Notifications        | Email (Resend) + Expo push via transactional outbox: receipt, lobby full, 30/5-min start reminders, match start (room code), opponent submitted, result, disputes, payout/refund sent, admin alerts. MoMo number set without OTP (Paystack name-resolve + first charge proves ownership) — no SMS | ✅ |
 | 3F | Analytics            | Revenue, active players, popular games, payout volume, fill rate, time-to-fill, refund rate, no-show rate       | ✅ |
 
 ---
@@ -678,7 +678,7 @@ Double-credited webhooks, concurrent-join races, double payouts → miscounted m
 ### R5. Match no-shows at scheduled start — HIGH × MEDIUM
 With scheduled starts, one player not showing wastes the other's time and creates disputes.
 **Mitigations in plan:**
-- Push + SMS reminders 30min and 5min before scheduled start — 3E
+- Push reminders 30min and 5min before scheduled start — 3E ✅ (email instead of SMS, decision 2026-09-15)
 - Deadline rule already handles non-submission (single `won` pick wins; else admin) — §3
 - Admin can award a player or cancel+refund — 3B
 - 3F: no-show rate tracked per tournament; feeds launch scheduling decisions
@@ -695,7 +695,7 @@ Login now rides on Google OAuth or email delivery; some budget Androids ship wit
 Disputes, lobbies, refunds and payout failures all wait on an admin. If nobody is watching, the product stalls.
 **Mitigations in plan:**
 - 3C: "action required" queue (disputes, failed payouts, lobbies closing unfilled) sorted by age
-- SMS alerts to admins on: dispute created, payout failed, lobby closed unfilled — 3C, 3E
+- Email alerts to admins (ADMIN_ALERT_EMAIL) on: dispute created, payout failed after retries — 3E ✅
 - Dispute SLA target (e.g., 24h) displayed in the dashboard — 3B
 
 ### R8. Regulatory (Ghana gaming rules on paid-entry tournaments) — LOW × EXISTENTIAL
@@ -735,7 +735,7 @@ Cached bracket/prize data goes stale while offline.
 3. **Admin dispute resolution** = `award` (winner + advance) / `replay` (picks cleared, fresh room code + window) / `refund` — refund cancels the whole tournament and refunds every paid registration (reuses the 1C cancel flow, extended with an `allowInProgress` gate that is ONLY reachable from the dispute path)
 4. **Cancel flow extracted to `src/services/cancel.js`** (1C route + 1F dispute both call it); gateway rule: open/full pre-start for plain cancel, in_progress only via dispute refund
 5. **UID exchange needs no new endpoint** — `GET /api/matches/:id` exposes both players' game_uid (public by design); screenshots are stored as URLs submitted with the pick (upload endpoint lands with the app in 2C/2D)
-6. **Money invariants (hourly)**: completed → exactly 2 successful payouts + 1 platform fee; cancelled → a refund row per refunded registration; final completed → payout rows exist; violations log + alert (push/SMS in 3E); 5-minute grace for just-completed tournaments (payout can still be in flight)
+6. **Money invariants (hourly)**: completed → exactly 2 successful payouts + 1 platform fee; cancelled → a refund row per refunded registration; final completed → payout rows exist; violations log + alert; 5-minute grace for just-completed tournaments (payout can still be in flight)
 7. **Backend is complete (1A–1F)** — next is the React Native app (2A–2D); API surface for it: auth, tournaments, bracket, matches, results, admin
 8. Node-postgres gotcha logged for future modules: `count(*)` comes back as an **int8 string** — cast `(count(*) FILTER (...))::int` or comparisons silently fail
 

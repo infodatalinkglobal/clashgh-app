@@ -5,7 +5,6 @@
  */
 
 export const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
-export const OTP_RE = /^[0-9]{6}$/;
 export const EMAIL_RE = /^\S+@\S+\.\S+$/;
 export const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

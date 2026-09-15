@@ -1,33 +1,26 @@
 import React, { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
-import { Config } from '../config';
 import { useAuth } from '../store/AuthContext';
 import { Badge, Button, Logo, Screen, TextField } from '../components/ui';
 import { colors, fontWeights, spacing, typography } from '../theme';
-import {
-  detectProvider,
-  isValidUsername,
-  providerLabel,
-  toE164,
-  toLocalDisplay,
-} from '../utils/phone';
+import { detectProvider, isValidUsername, providerLabel, toE164, toLocalDisplay } from '../utils/phone';
 
 /**
- * One-time onboarding (Module 2A): username + MoMo number + OTP.
+ * One-time onboarding: username + MoMo number.
  *
- * The phone number is the ONE number that both pays and receives
- * (user decision: "phone number for paid is the same to receive") —
- * verified exactly once, here, via SMS OTP. No repeated OTPs.
+ * No SMS OTP (decision 2026-09-15). The number is proven by money, not
+ * by a code: in live mode the backend resolves the registered account
+ * name via Paystack so the player sees "MTN · KOFI MENSAH" before
+ * confirming, and the first entry fee is approved on that very phone.
+ * Set once, then locked — the same number pays and receives prizes.
  */
 export function OnboardingScreen() {
-  const { profile, setProfileUsername, requestPhoneOtp, verifyPhoneOtp, busy, error, dismissError } =
-    useAuth();
+  const { profile, setProfileUsername, resolveMomo, saveMomo, busy, error, dismissError } = useAuth();
 
   const [username, setUsername] = useState(profile?.username ?? '');
   const [phone, setPhone] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [step, setStep] = useState<'details' | 'code'>(profile?.username ? 'details' : 'details');
+  const [step, setStep] = useState<'details' | 'confirm'>('details');
+  const [accountName, setAccountName] = useState<string | null>(null);
 
   const e164 = useMemo(() => toE164(phone), [phone]);
   const provider = useMemo(() => detectProvider(phone), [phone]);
@@ -43,24 +36,22 @@ export function OnboardingScreen() {
         ? 'That prefix is not a supported MoMo number'
         : null;
 
-  const sendCode = async () => {
+  const check = async () => {
     dismissError();
     try {
-      if (!profile?.username && username) {
-        await setProfileUsername(username);
-      }
-      await requestPhoneOtp(e164 as string);
-      setOtpSent(true);
-      setStep('code');
+      if (!profile?.username && username) await setProfileUsername(username);
+      const r = await resolveMomo(e164 as string);
+      setAccountName(r.account_name);
+      setStep('confirm');
     } catch {
       // error surfaced via context
     }
   };
 
-  const verify = async () => {
+  const confirm = async () => {
     dismissError();
     try {
-      await verifyPhoneOtp(e164 as string, otp.trim());
+      await saveMomo(e164 as string);
     } catch {
       // error surfaced via context
     }
@@ -76,9 +67,7 @@ export function OnboardingScreen() {
           </Text>
         </View>
 
-        {error ? (
-          <Text style={{ color: colors.red, fontSize: typography.caption }}>{error}</Text>
-        ) : null}
+        {error ? <Text style={{ color: colors.red, fontSize: typography.caption }}>{error}</Text> : null}
 
         {step === 'details' ? (
           <>
@@ -98,50 +87,57 @@ export function OnboardingScreen() {
               keyboardType="phone-pad"
               hint={
                 provider
-                  ? `Will be verified via SMS — pays and receives: ${providerLabel(provider)}`
+                  ? `${providerLabel(provider)} — this number pays entry fees and receives prizes`
                   : 'Your Mobile Money number — the same number pays and receives'
               }
               error={phoneError}
             />
-            {provider ? (
-              <Badge label={providerLabel(provider)} tone="gold" />
-            ) : null}
+            {provider ? <Badge label={providerLabel(provider)} tone="gold" /> : null}
             <Button
-              label="Send verification code"
+              label="Continue"
               busy={busy}
-              disabled={!e164 || !provider || !!usernameError || (username.length === 0 && !!profile?.username === false)}
-              onPress={() => void sendCode()}
+              disabled={!e164 || !provider || !!usernameError || (username.length === 0 && !profile?.username)}
+              onPress={() => void check()}
             />
             <Text style={{ color: colors.textFaint, fontSize: typography.tiny }}>
-              Verified once, never again. OTP expires after {Config.otpExpiryMinutes} minutes.
+              No code to type. You confirm the number once; your first entry fee is approved on that phone, and
+              that is what proves it is yours. It cannot be changed afterwards without contacting support.
             </Text>
           </>
         ) : (
           <>
             <Text style={{ color: colors.text, fontSize: typography.subheading, fontWeight: fontWeights.semibold }}>
-              Code sent to {toLocalDisplay(e164)}
+              Is this your MoMo number?
             </Text>
-            <TextField
-              label="6-digit code"
-              value={otp}
-              onChangeText={(t) => setOtp(t.replace(/\D/g, '').slice(0, 6))}
-              placeholder="••••••"
-              keyboardType="number-pad"
-              autoFocus
-              onSubmit={() => void verify()}
-            />
-            <Button label="Verify & finish" busy={busy} disabled={otp.length !== 6} onPress={() => void verify()} />
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 12,
+                padding: spacing.md,
+                gap: spacing.xs,
+              }}
+            >
+              <Text style={{ color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold }}>
+                {toLocalDisplay(e164)}
+              </Text>
+              <Text style={{ color: colors.textMuted, fontSize: typography.caption }}>
+                {providerLabel(provider!)}
+                {accountName ? ` · registered to ${accountName}` : ''}
+              </Text>
+            </View>
+            <Text style={{ color: colors.textMuted, fontSize: typography.caption }}>
+              Entry fees are charged to this number and every prize is sent back to it. Once saved it is locked
+              to your account.
+            </Text>
+            <Button label="Yes, save this number" busy={busy} onPress={() => void confirm()} />
             <Button
-              label={`Change number (${toLocalDisplay(e164)})`}
+              label="Change number"
               variant="ghost"
               onPress={() => {
                 setStep('details');
-                setOtpSent(false);
+                setAccountName(null);
               }}
             />
-            <Text style={{ color: colors.textFaint, fontSize: typography.tiny }}>
-              In dev mode the code is printed in the API server console (mock SMS provider).
-            </Text>
           </>
         )}
       </Screen>

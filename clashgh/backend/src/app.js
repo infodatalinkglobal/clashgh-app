@@ -3,6 +3,7 @@ import { env } from './config/env.js';
 import { authRouter } from './routes/auth.js';
 import { adminRouter } from './routes/admin.js';
 import { adminDashboardRouter } from './routes/adminDashboard.js';
+import { notificationsRouter } from './routes/notifications.js';
 import { tournamentRouter } from './routes/tournaments.js';
 import { matchRouter } from './routes/matches.js';
 import { devAuthRouter } from './routes/devAuth.js';
@@ -52,6 +53,7 @@ export function createApp() {
   });
 
   app.use('/api', authRouter);
+  app.use('/api', notificationsRouter);
   app.use('/api', adminRouter);
   app.use('/api', adminDashboardRouter);
   app.use('/api/tournaments', tournamentRouter);

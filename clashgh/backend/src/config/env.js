@@ -50,9 +50,13 @@ export const env = {
   authProvider,
   jwtSecret,
   jwtIssuer,
-  smsProvider: process.env.SMS_PROVIDER || 'mock',
-  otpTtlMinutes: Number(process.env.OTP_TTL_MINUTES) || 10,
-  otpMaxAttempts: Number(process.env.OTP_MAX_ATTEMPTS) || 5,
+  // Notifications (3E): email + Expo push, both 'mock' in dev.
+  mailProvider: process.env.MAIL_PROVIDER || 'mock',
+  mailFrom: process.env.MAIL_FROM || 'ClashGH <no-reply@clashgh.app>',
+  resendApiKey: process.env.RESEND_API_KEY || null,
+  pushProvider: process.env.PUSH_PROVIDER || 'mock',
+  expoAccessToken: process.env.EXPO_ACCESS_TOKEN || null,
+  adminAlertEmail: process.env.ADMIN_ALERT_EMAIL || null,
   // Payments (1C stub / 1E live)
   paystackMode: process.env.PAYSTACK_MODE || 'stub',
   paystackApiUrl: process.env.PAYSTACK_API_URL || 'https://api.paystack.co',
@@ -72,6 +76,9 @@ export const env = {
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
 
+if (env.mailProvider === 'resend' && !env.resendApiKey) {
+  throw new Error('MAIL_PROVIDER=resend requires RESEND_API_KEY');
+}
 if (!['stub', 'live'].includes(env.paystackMode)) {
   throw new Error(`PAYSTACK_MODE must be 'stub' or 'live' (got '${env.paystackMode}')`);
 }

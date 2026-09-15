@@ -1,4 +1,5 @@
 import { pool } from '../db/pool.js';
+import { notify, notifyMany } from './notifications.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { UUID_RE } from '../utils/validate.js';
 import { generateRoomCode } from '../utils/roomCode.js';
@@ -37,6 +38,53 @@ const RESOLUTIONS = ['award', 'replay', 'refund'];
 // Activation
 // ---------------------------------------------------------------------------
 
+
+// ---------------------------------------------------------------------------
+// Notification helpers (3E) — all take the transaction client so the
+// outbox rows commit with the state change.
+// ---------------------------------------------------------------------------
+
+async function matchContext(client, match) {
+  const { rows: [ctx] } = await client.query(
+    `SELECT t.title AS tournament_title, t.max_players,
+            p1.username AS p1_username, p2.username AS p2_username
+     FROM public.tournaments t
+     LEFT JOIN public.users p1 ON p1.id = $2
+     LEFT JOIN public.users p2 ON p2.id = $3
+     WHERE t.id = $1`,
+    [match.tournament_id, match.player1_id, match.player2_id],
+  );
+  const totalRounds = Math.round(Math.log2(ctx.max_players));
+  return { ...ctx, is_final: match.match_round === totalRounds };
+}
+
+async function notifyMatchReady(client, match) {
+  const c = await matchContext(client, match);
+  const base = { tournament_title: c.tournament_title, room_code: match.room_code, round: match.match_round, deadline_at: match.deadline_at, match_id: match.id };
+  if (match.player1_id) await notify(client, { userId: match.player1_id, template: 'match_ready', payload: { ...base, opponent_username: c.p2_username ?? 'TBD' } });
+  if (match.player2_id) await notify(client, { userId: match.player2_id, template: 'match_ready', payload: { ...base, opponent_username: c.p1_username ?? 'TBD' } });
+}
+
+async function notifyMatchResult(client, match, winnerId) {
+  const c = await matchContext(client, match);
+  const loserId = winnerId === match.player1_id ? match.player2_id : match.player1_id;
+  const winnerName = winnerId === match.player1_id ? c.p1_username : c.p2_username;
+  const base = { tournament_title: c.tournament_title, round: match.match_round, is_final: c.is_final, winner_username: winnerName, match_id: match.id };
+  await notify(client, { userId: winnerId, template: 'match_result', payload: { ...base, won: true } });
+  if (loserId) await notify(client, { userId: loserId, template: 'match_result', payload: { ...base, won: false } });
+}
+
+async function notifyDisputeOpened(client, match, reason) {
+  const c = await matchContext(client, match);
+  const payload = { tournament_title: c.tournament_title, round: match.match_round, reason, match_id: match.id };
+  await notifyMany(client, [match.player1_id, match.player2_id], { template: 'dispute_opened', payload });
+  await notify(client, {
+    userId: null,
+    template: 'admin_dispute',
+    payload: { ...payload, match_number: match.match_number, player1_username: c.p1_username, player2_username: c.p2_username },
+  });
+}
+
 /**
  * Mint the room code + timing for a pending match (caller holds the
  * transaction + row lock). Retries on the (astronomically rare) unique
@@ -54,7 +102,10 @@ async function activateMatchTx(client, matchId, resultWindowMinutes) {
          RETURNING *`,
         [matchId, roomCode, resultWindowMinutes],
       );
-      if (m) return m;
+      if (m) {
+        if (m.player1_id && m.player2_id) await notifyMatchReady(client, m);
+        return m;
+      }
       return null; // someone else activated it first
     } catch (err) {
       if (err.code === '23505' && /room_code/.test(err.message)) continue;
@@ -172,6 +223,7 @@ async function completeMatchTx(client, match, winnerId) {
      WHERE tournament_id = $1 AND match_round = $2 AND match_number = $4`,
     [match.tournament_id, match.match_round + 1, winnerId, nextMatchNumber],
   );
+  await notifyMatchResult(client, match, winnerId);
 }
 
 // ---------------------------------------------------------------------------
@@ -242,6 +294,7 @@ export async function submitResult({ matchId, userId, pick, screenshotUrl, reaso
          WHERE id = $1`,
         [match.id, pick, screenshotUrl, reason],
       );
+      await notifyDisputeOpened(client, match, reason ?? 'A player reported a dispute');
       await client.query('COMMIT');
       return { status: 'disputed', message: 'Match sent to admin review' };
     }
@@ -258,6 +311,12 @@ export async function submitResult({ matchId, userId, pick, screenshotUrl, reaso
     if (!p1 || !p2) {
       // Only one pick in so far — wait for the opponent.
       await client.query(`UPDATE public.matches SET status = 'awaiting_results' WHERE id = $1`, [match.id]);
+      const c = await matchContext(client, match);
+      await notify(client, {
+        userId: isP1 ? match.player2_id : match.player1_id,
+        template: 'opponent_submitted',
+        payload: { tournament_title: c.tournament_title, opponent_username: isP1 ? c.p1_username : c.p2_username, deadline_at: match.deadline_at, match_id: match.id },
+      });
       outcome = { status: 'awaiting_results' };
     } else if (p1 === 'won' && p2 === 'lost') {
       await completeMatchTx(client, match, match.player1_id);
@@ -272,6 +331,7 @@ export async function submitResult({ matchId, userId, pick, screenshotUrl, reaso
          WHERE id = $1`,
         [match.id],
       );
+      await notifyDisputeOpened(client, match, 'Both players reported a draw — admin to decide (replay or award)');
       outcome = { status: 'disputed', message: 'Agreed draw — admin will decide (replay or award)' };
     } else {
       await client.query(
@@ -280,6 +340,7 @@ export async function submitResult({ matchId, userId, pick, screenshotUrl, reaso
          WHERE id = $1`,
         [match.id],
       );
+      await notifyDisputeOpened(client, match, 'The two players reported different results — admin to review');
       outcome = { status: 'disputed', message: 'Results do not agree — admin will review' };
     }
 
@@ -333,6 +394,7 @@ export async function enforceDeadlines() {
           `UPDATE public.matches SET status = 'disputed', dispute_reason = $2 WHERE id = $1`,
           [match.id, reason],
         );
+        await notifyDisputeOpened(client, match, reason);
         await client.query('COMMIT');
         results.push({ match: match.id, outcome: 'disputed' });
       }
@@ -433,6 +495,14 @@ export async function resolveDispute({ matchId, adminId, resolution, winnerId = 
         throw new ApiError(400, 'winner_id must be one of the two players in this match');
       }
       await client.query(`UPDATE public.matches SET dispute_reason = 'Admin awarded the match' WHERE id = $1`, [matchId]);
+      {
+        const c = await matchContext(client, m);
+        const winnerName = winnerId === m.player1_id ? c.p1_username : c.p2_username;
+        await notifyMany(client, [m.player1_id, m.player2_id], {
+          template: 'dispute_resolved',
+          payload: { tournament_title: c.tournament_title, round: m.match_round, outcome: `Match awarded to ${winnerName}`, match_id: m.id },
+        });
+      }
       await completeMatchTx(client, m, winnerId);
       await client.query(
         `INSERT INTO public.admin_audit_log (admin_id, action, entity_type, entity_id, details)
@@ -468,6 +538,15 @@ export async function resolveDispute({ matchId, adminId, resolution, winnerId = 
        VALUES ($1, 'resolve_dispute', 'match', $2, $3)`,
       [adminId, matchId, JSON.stringify({ resolution: 'replay' })],
     );
+    {
+      const { rows: [fresh] } = await client.query('SELECT * FROM public.matches WHERE id = $1', [matchId]);
+      const c = await matchContext(client, fresh);
+      await notifyMany(client, [m.player1_id, m.player2_id], {
+        template: 'dispute_resolved',
+        payload: { tournament_title: c.tournament_title, round: m.match_round, outcome: 'Replay ordered — a new room code has been issued', match_id: m.id },
+      });
+      await notifyMatchReady(client, fresh);
+    }
     await client.query('COMMIT');
     return { resolution: 'replay', match: matchId };
   } catch (err) {

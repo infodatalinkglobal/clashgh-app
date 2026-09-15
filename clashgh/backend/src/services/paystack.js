@@ -51,6 +51,26 @@ export async function initCharge({ email, amountPesewas, reference, metadata }) 
   });
 }
 
+/**
+ * Resolve the account name behind a MoMo number (Paystack "Resolve Account").
+ * GET /bank/resolve?account_number=0244123456&bank_code=MTN
+ * Returns { account_name, account_number } — shown to the player so they
+ * confirm the number is theirs before it is locked (replaces SMS OTP).
+ */
+const MOMO_BANK_CODES = { mtn: 'MTN', vodafone: 'VOD', airteltigo: 'ATL' };
+export async function resolveMomoAccount({ phone, provider }) {
+  const local = `0${phone.slice(4)}`; // +233XXXXXXXXX → 0XXXXXXXXX
+  const qs = new URLSearchParams({ account_number: local, bank_code: MOMO_BANK_CODES[provider] });
+  const res = await fetch(`${API_URL()}/bank/resolve?${qs}`, {
+    headers: { Authorization: `Bearer ${env.paystackSecretKey}` },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || json.status === false) {
+    throw new Error(`Paystack /bank/resolve failed: ${json.message ?? `HTTP ${res.status}`}`);
+  }
+  return { account_name: json.data?.account_name ?? null, account_number: json.data?.account_number ?? local };
+}
+
 /** Create a MoMo transfer recipient (name + E.164 phone). */
 export async function createTransferRecipient({ name, phone, provider }) {
   return paystackCall('/transfer/recipients', {
@@ -96,4 +116,4 @@ export function verifyWebhookSignature(rawBody, signatureHeader) {
   return crypto.timingSafeEqual(given, want);
 }
 
-export const paystack = { initCharge, createTransferRecipient, initTransfer, verifyWebhookSignature };
+export const paystack = { initCharge, resolveMomoAccount, createTransferRecipient, initTransfer, verifyWebhookSignature };
