@@ -1,8 +1,9 @@
 # ClashGH Mobile (React Native + Expo)
 
 Android-first tournament app for the ClashGH eFootball / FC Mobile / CODM / DLS
-league. Modules **2A — Auth Screens** and **2B — Home & Lobby** are built;
-2C–2F add the bracket, match-room, score-submit and wallet UIs.
+league. Modules **2A — Auth Screens**, **2B — Home & Lobby** and
+**2C — Tournament View** are built; 2D–2F add the match-room, score-submit
+and wallet UIs.
 
 ## Stack
 
@@ -67,6 +68,20 @@ go to Home.
 - Joining again with a pending registration (409) resumes the payment
   screen instead of erroring.
 
+## Tournament View (Module 2C)
+
+- `screens/TournamentScreen.tsx`: prize pool with the 1st / runner-up
+  split (projected while the lobby is open, fixed once the bracket is
+  drawn — recomputed client-side with the same floor math as
+  `utils/prize.js`), schedule, paid-count progress, my status badges
+  (You're in / Champion / Eliminated), Join / Finish payment / Go to match
+  actions. Polls every `matchPollMs` only while `in_progress`.
+- `components/Bracket.tsx`: hand-rolled single-elimination bracket — one
+  horizontally scrolled column per round, each match centred against the
+  two matches that feed it; my matches are highlighted and tappable
+  (→ Match room, 2D), LIVE / Disputed / Done pills, seeds, winner ✓ and
+  struck-through losers. No bracket libraries (APK budget).
+
 ### Web preview (dev only)
 
 `npx expo start --web` works for a quick look (needs `react-dom` +
@@ -78,7 +93,8 @@ seen from the browser.
 
 ```
 mobile/src/
-├── screens/       SignIn, Onboarding, Home (lobby list), Join (UID + pay), Me
+├── screens/       SignIn, Onboarding, Home (lobby list), Tournament (bracket), Join (UID + pay), Match (2D), Me
+├── components/    ui.tsx (Screen, Button, TextField, Badge, Logo), Bracket.tsx
 ├── components/    ui.tsx — Screen, Button, TextField, Badge, Logo
 ├── navigation/    RootNavigator (auth-gated stack)
 ├── services/      api.ts (typed client + models), auth.ts (providers)

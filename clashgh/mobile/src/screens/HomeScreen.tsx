@@ -122,7 +122,10 @@ export function HomeScreen({ navigation }: Props) {
           ? `${t.spots_left} spot${t.spots_left === 1 ? '' : 's'} left`
           : 'Lobby full';
     return (
-      <View style={styles.card}>
+      <Pressable
+        onPress={() => navigation.navigate('Tournament', { tournamentId: t.id })}
+        style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+      >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
           <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
             <Badge label={GAME_LABELS[t.game]} tone="gold" />
@@ -166,15 +169,17 @@ export function HomeScreen({ navigation }: Props) {
             />
           ) : t.can_join ? (
             <Button label="Join" onPress={() => navigation.navigate('Join', { tournamentId: t.id })} />
-          ) : t.status === 'full' ? (
-            <Badge label="Full" tone="muted" />
-          ) : t.status === 'in_progress' ? (
-            <Badge label="In progress" tone="gold" />
+          ) : t.status === 'full' || t.status === 'in_progress' || t.status === 'completed' ? (
+            <Button
+              label={t.status === 'in_progress' ? 'Live · bracket →' : 'View bracket →'}
+              variant="secondary"
+              onPress={() => navigation.navigate('Tournament', { tournamentId: t.id })}
+            />
           ) : (
             <Badge label="Closed" tone="muted" />
           )}
         </View>
-      </View>
+      </Pressable>
     );
   };
 
