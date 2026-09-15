@@ -14,10 +14,17 @@ export class ApiError extends Error {
   }
 }
 
+// In-memory first: storage can be unavailable/blocked (third-party iframe
+// previews, strict privacy modes). Storage is best-effort so a reload keeps
+// the session where it is allowed.
+let memToken: string | null = null;
+const safe = <T>(fn: () => T, fallback: T): T => {
+  try { return fn(); } catch { return fallback; }
+};
 export const token = {
-  get: () => sessionStorage.getItem(TOKEN_KEY),
-  set: (t: string) => sessionStorage.setItem(TOKEN_KEY, t),
-  clear: () => sessionStorage.removeItem(TOKEN_KEY),
+  get: () => memToken ?? safe(() => sessionStorage.getItem(TOKEN_KEY), null),
+  set: (t: string) => { memToken = t; safe(() => sessionStorage.setItem(TOKEN_KEY, t), undefined); },
+  clear: () => { memToken = null; safe(() => sessionStorage.removeItem(TOKEN_KEY), undefined); },
 };
 
 let onUnauthorized: () => void = () => {};
