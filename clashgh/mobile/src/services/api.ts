@@ -172,6 +172,7 @@ export interface MatchView {
   tournament_id: string;
   tournament_title: string;
   tournament_status: TournamentStatus;
+  tournament_starts_at: string;
   match_round: number;
   match_number: number;
   status: 'pending' | 'active' | 'awaiting_results' | 'disputed' | 'completed';

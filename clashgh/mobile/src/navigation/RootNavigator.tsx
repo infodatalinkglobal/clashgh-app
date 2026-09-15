@@ -8,6 +8,7 @@ import { colors } from '../theme';
 import { HomeScreen } from '../screens/HomeScreen';
 import { JoinScreen } from '../screens/JoinScreen';
 import { MatchScreen } from '../screens/MatchScreen';
+import { SubmitResultScreen } from '../screens/SubmitResultScreen';
 import { TournamentScreen } from '../screens/TournamentScreen';
 import { MeScreen } from '../screens/MeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
@@ -18,6 +19,7 @@ export type RootStackParamList = {
   Tournament: { tournamentId: string };
   Join: { tournamentId: string; resumeReference?: string; resumeDeadline?: string };
   Match: { matchId: string };
+  SubmitResult: { matchId: string };
   Me: undefined;
   Onboarding: undefined;
   SignIn: undefined;
@@ -73,6 +75,7 @@ export function RootNavigator() {
         <Stack.Screen name="Tournament" component={TournamentScreen} />
         <Stack.Screen name="Join" component={JoinScreen} />
         <Stack.Screen name="Match" component={MatchScreen} />
+        <Stack.Screen name="SubmitResult" component={SubmitResultScreen} />
         <Stack.Screen
           name="Me"
           component={MeScreen}

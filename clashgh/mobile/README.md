@@ -1,9 +1,9 @@
 # ClashGH Mobile (React Native + Expo)
 
 Android-first tournament app for the ClashGH eFootball / FC Mobile / CODM / DLS
-league. Modules **2A — Auth Screens**, **2B — Home & Lobby** and
-**2C — Tournament View** are built; 2D–2F add the match-room, score-submit
-and wallet UIs.
+league. Modules **2A — Auth Screens**, **2B — Home & Lobby**,
+**2C — Tournament View** and **2D — Match Room** are built; 2E–2F add the
+score-submit and wallet UIs.
 
 ## Stack
 
@@ -82,6 +82,24 @@ go to Home.
   (→ Match room, 2D), LIVE / Disputed / Done pills, seeds, winner ✓ and
   struck-through losers. No bracket libraries (APK budget).
 
+## Match Room (Module 2D)
+
+`screens/MatchScreen.tsx` follows one match through its whole life from
+`GET /matches/:id` (public — the backend exposes usernames, seeds and
+in-game IDs so players can find each other):
+
+| status | what the player sees |
+|---|---|
+| `pending` | opponent (or "TBD" until the previous round finishes), live countdown to kick-off (`tournament_starts_at`, added to the match payload) — room code hidden |
+| `active` | **room code** large + selectable, both in-game IDs, result-window countdown (turns red under 5 min), 5-step instructions, **Submit result →** (2E) |
+| `awaiting_results` | my pick badge, waiting for opponent |
+| `disputed` | under-review card with the reason; payouts locked |
+| `completed` | won / eliminated banner (champion / runner-up copy once the cup is `completed`) |
+
+Polls every `Config.matchPollMs` (30s) only while the match is not
+completed, so the room code shows up within a sweep of activation
+without push notifications (3E adds those).
+
 ### Web preview (dev only)
 
 `npx expo start --web` works for a quick look (needs `react-dom` +
@@ -93,7 +111,7 @@ seen from the browser.
 
 ```
 mobile/src/
-├── screens/       SignIn, Onboarding, Home (lobby list), Tournament (bracket), Join (UID + pay), Match (2D), Me
+├── screens/       SignIn, Onboarding, Home (lobby list), Tournament (bracket), Join (UID + pay), Match (room), SubmitResult (2E), Me
 ├── components/    ui.tsx (Screen, Button, TextField, Badge, Logo), Bracket.tsx
 ├── components/    ui.tsx — Screen, Button, TextField, Badge, Logo
 ├── navigation/    RootNavigator (auth-gated stack)

@@ -48,6 +48,7 @@ async function loadMatchView(matchId, { includeScreenshots = false } = {}) {
     tournament_id: m.tournament_id,
     tournament_title: m.tournament_title,
     tournament_status: m.tournament_status,
+    tournament_starts_at: m.tournament_starts_at,
     match_round: m.match_round,
     match_number: m.match_number,
     status: m.status,
