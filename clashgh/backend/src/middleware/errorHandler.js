@@ -26,7 +26,13 @@ export function errorHandler(err, req, res, next) {
   // did not handle it itself.
   const status = err.status || (err.code === '23505' ? 409 : 500);
   const message =
-    status === 500 ? 'Internal server error' : err.code === '23505' ? 'Already in use' : err.message;
+    status === 500
+      ? 'Internal server error'
+      : err.code === '23505'
+        ? 'Already in use'
+        : err.type === 'entity.too.large'
+          ? 'Upload too large — screenshots must be under 500KB'
+          : err.message;
 
   if (status === 500) console.error('[error]', err);
   res.status(status).json({ success: false, data: null, message });

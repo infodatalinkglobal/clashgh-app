@@ -22,7 +22,8 @@ export function createApp() {
     app.post('/api/paystack/webhook', express.raw({ type: () => true }), paystackWebhookHandler);
   }
 
-  app.use(express.json());
+  const jsonSmall = express.json();
+  app.use((req, res, next) => (req.path === '/api/uploads/screenshot' ? next() : jsonSmall(req, res, next)));
 
   // CORS — needed by browser clients (Expo web preview in dev, the 3C
   // admin panel later). Native apps are unaffected. Origins are locked
