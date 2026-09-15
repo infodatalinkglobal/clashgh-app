@@ -2,8 +2,9 @@
 
 Android-first tournament app for the ClashGH eFootball / FC Mobile / CODM / DLS
 league. Modules **2A — Auth Screens**, **2B — Home & Lobby**,
-**2C — Tournament View**, **2D — Match Room** and **2E — Score Submit** are
-built; 2F adds the wallet (transaction history) UI.
+**2C — Tournament View**, **2D — Match Room**, **2E — Score Submit** and
+**2F — Wallet** are built — **Part 2 (player app) is complete**. Part 3
+(admin panel, Cloudinary, notifications, analytics) is next.
 
 ## Stack
 
@@ -121,6 +122,18 @@ Storage is the backend's concern (`SCREENSHOT_STORAGE=local` writes to
 `backend/uploads-dev`; `cloudinary` is wired in `services/screenshots.js`
 for Module 3D — no app change needed).
 
+## Wallet (Module 2F)
+
+`screens/WalletScreen.tsx` ← `GET /me/transactions` (new, in
+`backend/src/routes/auth.js`). **Read-only** — there is no in-app balance
+(agent.md §3): the hero shows net winnings + won / fees paid / refunded
+totals and a "₵X on its way to your MoMo" badge while a payout or refund
+transfer is `pending`. Each row shows type, tournament, amount (+/−),
+and status (pending → "sending to MoMo…", failed → "retrying" / "support
+notified" after the 3rd attempt). Rows tap through to the tournament.
+Paged 30 at a time (infinite scroll). Reachable from Home ("₵ Wallet")
+and the Account screen.
+
 ### Web preview (dev only)
 
 `npx expo start --web` works for a quick look (needs `react-dom` +
@@ -132,7 +145,7 @@ seen from the browser.
 
 ```
 mobile/src/
-├── screens/       SignIn, Onboarding, Home (lobby list), Tournament (bracket), Join (UID + pay), Match (room), SubmitResult (screenshot + pick), Me
+├── screens/       SignIn, Onboarding, Home (lobby list), Tournament (bracket), Join (UID + pay), Match (room), SubmitResult (screenshot + pick), Wallet (history), Me
 ├── components/    ui.tsx (Screen, Button, TextField, Badge, Logo), Bracket.tsx
 ├── components/    ui.tsx — Screen, Button, TextField, Badge, Logo
 ├── navigation/    RootNavigator (auth-gated stack)

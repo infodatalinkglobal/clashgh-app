@@ -1,6 +1,8 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../store/AuthContext';
 import { Badge, Button, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
@@ -9,7 +11,7 @@ import { providerLabel, toLocalDisplay } from '../utils/phone';
 /** Account screen: profile, verification state, sign-out. */
 export function MeScreen() {
   const { profile, signOut, busy } = useAuth();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   if (!profile) return null;
 
   return (
@@ -42,6 +44,8 @@ export function MeScreen() {
       <Text style={{ color: colors.textFaint, fontSize: typography.tiny }}>
         The same MoMo number pays your entry fees and receives your winnings.
       </Text>
+
+      <Button label="Wallet · winnings & fees →" variant="secondary" onPress={() => navigation.navigate('Wallet')} />
 
       <View style={{ flex: 1 }} />
       <Button label="Sign out" variant="danger" busy={busy} onPress={() => void signOut()} />

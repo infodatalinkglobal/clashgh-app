@@ -117,3 +117,50 @@ authRouter.post(
     });
   }),
 );
+
+/**
+ * GET /api/me/transactions?limit=&offset=  (Module 2F Wallet)
+ *
+ * Read-only money history — there is NO wallet balance (agent.md §3: money
+ * flows MoMo → Paystack → MoMo; `transactions` is the ledger). Returns the
+ * user's rows newest-first plus lifetime totals of successful rows.
+ * `platform_fee` rows are admin-side bookkeeping and are excluded.
+ */
+authRouter.get(
+  '/me/transactions',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 100);
+    const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+    const { rows: transactions } = await pool.query(
+      `SELECT tx.id, tx.type, tx.amount_pesewas, tx.status, tx.direction, tx.description,
+              tx.tournament_id, t.title AS tournament_title, t.game AS tournament_game,
+              tx.paystack_reference, tx.attempts, tx.next_retry_at, tx.created_at, tx.updated_at
+       FROM public.transactions tx
+       LEFT JOIN public.tournaments t ON t.id = tx.tournament_id
+       WHERE tx.user_id = $1 AND tx.type <> 'platform_fee'
+       ORDER BY tx.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [req.user.id, limit, offset],
+    );
+
+    const { rows: [totals] } = await pool.query(
+      `SELECT
+         coalesce(sum(amount_pesewas) FILTER (WHERE type = 'entry_fee' AND status = 'success'), 0)::int AS fees_paid_pesewas,
+         coalesce(sum(amount_pesewas) FILTER (WHERE type = 'payout'    AND status = 'success'), 0)::int AS winnings_pesewas,
+         coalesce(sum(amount_pesewas) FILTER (WHERE type = 'refund'    AND status = 'success'), 0)::int AS refunds_pesewas,
+         coalesce(sum(amount_pesewas) FILTER (WHERE type IN ('payout','refund') AND status = 'pending'), 0)::int AS pending_out_pesewas,
+         count(*) FILTER (WHERE type = 'payout' AND status = 'success')::int AS payouts_count
+       FROM public.transactions
+       WHERE user_id = $1`,
+      [req.user.id],
+    );
+
+    res.json({
+      success: true,
+      data: { transactions, totals, limit, offset },
+      message: 'Transaction history',
+    });
+  }),
+);

@@ -196,6 +196,34 @@ export interface RegistrationView {
   payment_deadline: string;
 }
 
+export type TransactionType = 'entry_fee' | 'payout' | 'refund' | 'platform_fee';
+export type TransactionStatus = 'pending' | 'success' | 'failed';
+
+export interface TransactionRow {
+  id: string;
+  type: TransactionType;
+  amount_pesewas: number;
+  status: TransactionStatus;
+  direction: 'in' | 'out';
+  description: string;
+  tournament_id: string | null;
+  tournament_title: string | null;
+  tournament_game: GameType | null;
+  paystack_reference: string | null;
+  attempts: number;
+  next_retry_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WalletTotals {
+  fees_paid_pesewas: number;
+  winnings_pesewas: number;
+  refunds_pesewas: number;
+  pending_out_pesewas: number;
+  payouts_count: number;
+}
+
 export interface ChargeInfo {
   reference: string;
   channel: string;
@@ -233,6 +261,17 @@ export const endpoints = {
       '/me/phone/verify',
       { method: 'POST', body: { phone, otp }, auth: true },
     ),
+
+  myTransactions: (params?: { limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.offset) qs.set('offset', String(params.offset));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return api.request<{ transactions: TransactionRow[]; totals: WalletTotals; limit: number; offset: number }>(
+      `/me/transactions${suffix}`,
+      { auth: true },
+    );
+  },
 
   listTournaments: (params?: { game?: GameType; status?: TournamentStatus; limit?: number; offset?: number }) => {
     const qs = new URLSearchParams();
