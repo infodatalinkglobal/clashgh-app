@@ -12,6 +12,7 @@ Modules **1A — Database Schema**, **1B — Auth API**, **1C — Tournament API
 | `migrations/004_transactions_retry.sql` | `attempts` + `next_retry_at` on transactions (payout retry backoff) |
 | `seeds/001_dev_seed.sql` | Dev data: 1 admin + 8 players, 2 tournaments, a full 8-slot bracket (idempotent) |
 | `src/` | Express API (ESM, no TypeScript): config, db pool, middleware (auth / rate-limit / errors), routes (1B auth, 1C tournaments, 1D bracket view, 1E webhook + admin payout, 1F matches + admin dispute resolve), services (OTP, pluggable SMS, Paystack client, payment/escrow, bracket engine, match flow, cancel), sweepers (pending-TTL reaper, bracket-gen safety sweep, payout retry, match flow + hourly money invariants) |
+| `src/routes/adminDashboard.js` | Modules 3B/3C/3F admin API: overview (action queue, lobby health, revenue), tournaments list/detail, dispute queue with dispute-rate priority, players + ban/unban (audited), audit log, analytics with expansion gates |
 | `GET /api/me/transactions` (in `src/routes/auth.js`) | Module 2F wallet history: user's ledger rows newest-first (no `platform_fee`), + lifetime totals (fees / winnings / refunds / pending out) |
 | `src/routes/uploads.js` + `src/services/screenshots.js` | `POST /api/uploads/screenshot` (auth, base64 JPEG ≤600KB) → public URL. Storage pluggable: `local` (dev, `uploads-dev/`) or `cloudinary` (3D) |
 | `test/mock-paystack.js` | Local Paystack test double — integration-tests the LIVE path (charges, transfers, signed webhooks) with zero real keys |

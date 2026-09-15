@@ -251,12 +251,12 @@ Build modules in this exact order. Do not skip ahead. Each module must be functi
 
 | #  | Module               | Description                                                          | Status |
 | -- | -------------------- | -------------------------------------------------------------------- | ------ |
-| 3A | Score Verification   | Opposing-pick confirmation logic, auto-advance on agreement          | ⬜ |
-| 3B | Dispute System       | Flag disputes, lock payouts, auto-flag high-dispute-rate players, admin resolution (award player OR cancel+refund) | ⬜ |
-| 3C | Admin Dashboard      | Web panel: action queue, lobby health, tournaments, players, disputes, revenue, admin alerts       | ⬜ |
+| 3A | Score Verification   | Opposing-pick confirmation logic, auto-advance on agreement          | ✅ (built in 1F) |
+| 3B | Dispute System       | Flag disputes, lock payouts, auto-flag high-dispute-rate players, admin resolution (award player OR cancel+refund) | ✅ |
+| 3C | Admin Dashboard      | Web panel: action queue, lobby health, tournaments, players, disputes, revenue, admin alerts       | ✅ |
 | 3D | Screenshot Storage   | Cloudinary upload integration, image compression, URL storage        | ⬜ |
 | 3E | Notifications        | Push + SMS: scheduled-start reminders (30min/5min before), match start, opponent ready, payout sent | ⬜ |
-| 3F | Analytics            | Revenue, active players, popular games, payout volume, fill rate, time-to-fill, refund rate, no-show rate       | ⬜ |
+| 3F | Analytics            | Revenue, active players, popular games, payout volume, fill rate, time-to-fill, refund rate, no-show rate       | ✅ |
 
 ---
 
