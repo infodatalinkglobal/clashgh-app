@@ -35,7 +35,10 @@ export function setOnUnauthorized(fn: () => void) {
 export async function request<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const t = token.get();
-  if (t) headers.Authorization = `Bearer ${t}`;
+  if (t) {
+    headers.Authorization = `Bearer ${t}`;
+    headers['X-ClashGH-Token'] = t; // some proxies strip Authorization; backend accepts either
+  }
   let res: Response;
   try {
     res = await fetch(`${BASE}${path}`, { method: init.method ?? 'GET', headers, body: init.body === undefined ? undefined : JSON.stringify(init.body) });

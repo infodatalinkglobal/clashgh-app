@@ -47,7 +47,10 @@ class Client {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
     if (auth) {
       const token = await this.tokenProvider();
-      if (token) headers.Authorization = `Bearer ${token}`;
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+        headers['X-ClashGH-Token'] = token; // proxy-safe fallback (backend accepts either)
+      }
     }
 
     let res: Response;

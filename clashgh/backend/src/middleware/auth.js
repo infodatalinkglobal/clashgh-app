@@ -46,9 +46,14 @@ const PROFILE_FIELDS =
  */
 export async function requireAuth(req, res, next) {
   try {
+    // Standard: Authorization: Bearer <jwt>. Fallback: X-ClashGH-Token
+    // <jwt> — some reverse proxies / preview tunnels strip Authorization.
+    // Same JWT, same verification; only the transport differs.
     const header = req.headers.authorization || '';
-    const [scheme, token] = header.split(' ');
-    if (scheme !== 'Bearer' || !token) {
+    const [scheme, bearer] = header.split(' ');
+    const alt = req.headers['x-clashgh-token'];
+    const token = scheme === 'Bearer' && bearer ? bearer : typeof alt === 'string' && alt ? alt : null;
+    if (!token) {
       throw new ApiError(401, 'Missing bearer token');
     }
 
