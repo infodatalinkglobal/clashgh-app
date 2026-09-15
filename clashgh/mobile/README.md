@@ -137,9 +137,17 @@ and the Account screen.
 ### Web preview (dev only)
 
 `npx expo start --web` works for a quick look (needs `react-dom` +
-`react-native-web`, installed with `--no-save`). The backend sends CORS
-headers outside production; set `EXPO_PUBLIC_API_URL` to the API's URL as
-seen from the browser.
+`react-native-web`, installed with `--no-save`). Behind a sandbox/tunnel
+preview the browser cannot call the API on a second origin (gateway access
+tokens, stripped `Authorization`), so serve app + API from ONE port:
+
+```bash
+EXPO_PUBLIC_API_URL=/api npx expo start --web --port 8081   # Metro
+npm run web:proxy                                           # :8082 → /api→:3000, else→:8081
+```
+
+Open **:8082**. `scripts/web-preview-proxy.mjs` is zero-dependency and
+never used by native builds.
 
 ## Structure (agent.md §10)
 
