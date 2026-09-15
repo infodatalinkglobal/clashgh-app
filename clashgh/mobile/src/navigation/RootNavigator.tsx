@@ -6,12 +6,14 @@ import { useAuth } from '../store/AuthContext';
 import { Config } from '../config';
 import { colors } from '../theme';
 import { HomeScreen } from '../screens/HomeScreen';
+import { JoinScreen } from '../screens/JoinScreen';
 import { MeScreen } from '../screens/MeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { SignInScreen } from '../screens/SignInScreen';
 
 export type RootStackParamList = {
   Home: undefined;
+  Join: { tournamentId: string; resumeReference?: string; resumeDeadline?: string };
   Me: undefined;
   Onboarding: undefined;
   SignIn: undefined;
@@ -64,6 +66,7 @@ export function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Join" component={JoinScreen} />
         <Stack.Screen
           name="Me"
           component={MeScreen}

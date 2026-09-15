@@ -63,6 +63,8 @@ export const env = {
   minEntryFeePesewas: Number(process.env.MIN_ENTRY_FEE_PESOWAS) || 1000,
   minPrizePesewas: Number(process.env.MIN_PRIZE_PESOWAS) || 1000,
   registrationPendingTtlMinutes: Number(process.env.REGISTRATION_PENDING_TTL_MINUTES) || 10,
+  // Browser origins allowed in production (comma-separated; admin panel URL).
+  corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
 
 if (!['stub', 'live'].includes(env.paystackMode)) {

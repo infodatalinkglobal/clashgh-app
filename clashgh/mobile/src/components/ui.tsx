@@ -33,7 +33,7 @@ export function Logo({ size = 44 }: { size?: number }) {
         <View style={{ flex: 1, height: '52%', backgroundColor: colors.goldDim, borderRadius: radius.sm }} />
       </View>
       <Text style={{ color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold, letterSpacing: 2 }}>
-        CLASH<span style={{ color: colors.gold }}>GH</span>
+        CLASH<Text style={{ color: colors.gold }}>GH</Text>
       </Text>
     </View>
   );

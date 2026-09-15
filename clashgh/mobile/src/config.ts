@@ -29,6 +29,13 @@ export const Config = {
   /** Supabase-hosted Google OAuth client (Web ID) — used for the OAuth flow. */
   googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
 
+  /**
+   * 'stub' → the backend runs PAYSTACK_MODE=stub: the Join screen shows a
+   *          dev "simulate webhook" panel instead of a MoMo prompt.
+   * 'live' → real Paystack MoMo charge (authorization_url + phone prompt).
+   */
+  paystackMode: (process.env.EXPO_PUBLIC_PAYSTACK_MODE ?? 'stub') as 'stub' | 'live',
+
   /** Deep link scheme the app registers (matches app.json). */
   deeplinkScheme: 'clashgh',
 

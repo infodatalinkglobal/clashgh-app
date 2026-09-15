@@ -22,6 +22,23 @@ export function createApp() {
 
   app.use(express.json());
 
+  // CORS — needed by browser clients (Expo web preview in dev, the 3C
+  // admin panel later). Native apps are unaffected. Origins are locked
+  // down via CORS_ORIGINS in production; open outside production.
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    const allowed = env.nodeEnv !== 'production' || (origin && env.corsOrigins.includes(origin));
+    if (origin && allowed) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+      res.setHeader('Access-Control-Max-Age', '600');
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
+
   app.get('/api/health', (req, res) => {
     res.json({
       success: true,

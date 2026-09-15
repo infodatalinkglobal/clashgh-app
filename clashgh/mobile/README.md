@@ -1,8 +1,8 @@
 # ClashGH Mobile (React Native + Expo)
 
 Android-first tournament app for the ClashGH eFootball / FC Mobile / CODM / DLS
-league. Modules **2A — Auth Screens** is built (with the app scaffold it
-sits on); 2B–2D add the lobby, bracket and match-room UIs.
+league. Modules **2A — Auth Screens** and **2B — Home & Lobby** are built;
+2C–2F add the bracket, match-room, score-submit and wallet UIs.
 
 ## Stack
 
@@ -47,11 +47,38 @@ device use the host's LAN IP.
 Unverified users are hard-gated to the onboarding screen; verified users
 go to Home.
 
+## Home & Lobby + Join (Module 2B)
+
+- **Home**: tournament list (`GET /tournaments`), game filter chips,
+  entry fee / paid count / spots left / 1st + runner-up prizes / close
+  and start times, "Last updated" label, pull-to-refresh and refresh on
+  focus. Per-card state comes from `GET /tournaments/:id/me`: **Join**,
+  **Finish payment →** (resume a pending registration), **You're in ✓**,
+  Full / In progress / Closed / Cancelled.
+- **Join** (`screens/JoinScreen.tsx`): enter the in-game UID for that
+  game → `POST /tournaments/:id/join` creates the pending registration +
+  MoMo charge → the screen shows a **10-minute countdown** (the backend's
+  pending TTL) and polls `/tournaments/:id/me` every 4s until the
+  webhook flips the registration to `paid`. The app never assumes
+  success — only the settled webhook does. Live Paystack opens
+  `authorization_url` in the system browser; in `EXPO_PUBLIC_PAYSTACK_MODE=stub`
+  a dev panel simulates the webhook (Approve / Decline) via
+  `POST /dev/paystack/simulate-charge`.
+- Joining again with a pending registration (409) resumes the payment
+  screen instead of erroring.
+
+### Web preview (dev only)
+
+`npx expo start --web` works for a quick look (needs `react-dom` +
+`react-native-web`, installed with `--no-save`). The backend sends CORS
+headers outside production; set `EXPO_PUBLIC_API_URL` to the API's URL as
+seen from the browser.
+
 ## Structure (agent.md §10)
 
 ```
 mobile/src/
-├── screens/       SignIn, Onboarding, Home (2B placeholder), Me
+├── screens/       SignIn, Onboarding, Home (lobby list), Join (UID + pay), Me
 ├── components/    ui.tsx — Screen, Button, TextField, Badge, Logo
 ├── navigation/    RootNavigator (auth-gated stack)
 ├── services/      api.ts (typed client + models), auth.ts (providers)

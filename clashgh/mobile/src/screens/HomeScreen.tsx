@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   FlatList,
   Pressable,
@@ -114,7 +114,7 @@ export function HomeScreen({ navigation }: Props) {
 
   const renderCard = ({ item: t }: { item: Tournament }) => {
     const reg = registrations[t.id];
-    const paid = t.paid_count + (t.status === 'full' ? 0 : 0);
+    const paid = t.paid_count;
     const spotsText =
       t.status === 'cancelled'
         ? 'Cancelled'
@@ -181,7 +181,14 @@ export function HomeScreen({ navigation }: Props) {
   return (
     <Screen style={{ padding: 0, gap: 0 }}>
       <View style={{ padding: spacing.xl, paddingBottom: spacing.md }}>
-        <Text style={styles.header}>Tournaments</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.header}>Tournaments</Text>
+          <Pressable onPress={() => navigation.navigate('Me')} hitSlop={8} style={styles.avatar}>
+            <Text style={{ color: colors.gold, fontWeight: fontWeights.bold }}>
+              {(profile?.username ?? '?').slice(0, 1).toUpperCase()}
+            </Text>
+          </Pressable>
+        </View>
         <Text style={styles.updated}>
           {updatedAt ? `Last updated ${updatedAt.toLocaleTimeString()}` : 'Loading…'}
         </Text>
@@ -251,6 +258,16 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.title,
     fontWeight: fontWeights.bold,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   updated: {
     color: colors.textFaint,

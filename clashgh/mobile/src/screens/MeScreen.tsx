@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../store/AuthContext';
 import { Badge, Button, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
@@ -8,10 +9,12 @@ import { providerLabel, toLocalDisplay } from '../utils/phone';
 /** Account screen: profile, verification state, sign-out. */
 export function MeScreen() {
   const { profile, signOut, busy } = useAuth();
+  const navigation = useNavigation();
   if (!profile) return null;
 
   return (
     <Screen>
+      <Button label="‹ Back" variant="ghost" onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', minHeight: 36, paddingVertical: spacing.xs }} />
       <Text style={{ color: colors.text, fontSize: typography.title, fontWeight: fontWeights.bold }}>Account</Text>
 
       <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.md }}>
