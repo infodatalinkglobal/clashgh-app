@@ -10,6 +10,8 @@ import { Badge, Button, Eyebrow, FadeIn, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import { providerLabel, toLocalDisplay } from '../utils/phone';
 
+const BUILD_STAMP = process.env.EXPO_PUBLIC_BUILD_STAMP ?? 'dev';
+
 /** Account screen: profile, verification state, sign-out. */
 export function MeScreen() {
   const { profile, signOut, busy, refreshProfile } = useAuth();
@@ -72,6 +74,7 @@ export function MeScreen() {
       />
 
       <Button label="Sign out" variant="danger" busy={busy} onPress={() => void signOut()} style={{ marginTop: spacing.lg }} />
+      <Text style={{ color: colors.textFaint, fontSize: typography.tiny, textAlign: 'center' }}>ClashGH build {BUILD_STAMP}</Text>
       </ScrollView>
     </Screen>
   );

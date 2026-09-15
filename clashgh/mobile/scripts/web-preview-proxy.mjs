@@ -30,7 +30,7 @@ function serveStatic(req, res) {
   let file = path.join(STATIC, clean);
   if (!file.startsWith(STATIC)) { res.writeHead(403); return res.end(); }
   if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(STATIC, 'index.html'); // SPA fallback
-  res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': clean.startsWith('/_expo/') ? 'public, max-age=31536000, immutable' : 'no-cache' });
+  res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream', 'cache-control': clean.startsWith('/_expo/') ? 'public, max-age=31536000, immutable' : 'no-store, no-cache, must-revalidate, max-age=0', pragma: 'no-cache', expires: '0' });
   fs.createReadStream(file).pipe(res);
 }
 

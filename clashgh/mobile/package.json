@@ -36,7 +36,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "web:proxy": "STATIC_DIR=web-dist node scripts/web-preview-proxy.mjs",
-    "web:export": "EXPO_PUBLIC_API_URL=/api expo export --platform web --output-dir web-dist",
+    "web:export": "EXPO_PUBLIC_API_URL=/api EXPO_PUBLIC_BUILD_STAMP=$(date -u +%Y%m%d-%H%M) expo export --platform web --output-dir web-dist",
     "web:proxy:metro": "node scripts/web-preview-proxy.mjs"
   },
   "private": true
