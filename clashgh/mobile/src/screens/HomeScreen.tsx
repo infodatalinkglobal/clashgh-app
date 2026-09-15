@@ -137,8 +137,9 @@ export function HomeScreen({ navigation }: Props) {
                 <Badge label={t.status.replace('_', ' ')} tone={STATUS_TONE[t.status]} />
               )}
             </View>
-            <View style={{ padding: spacing.lg, paddingBottom: 0 }}>
+            <View style={{ padding: spacing.lg, paddingBottom: 0, gap: 2 }}>
               <Text style={styles.title} numberOfLines={2}>{t.title}</Text>
+              <Text style={styles.hostLine}>{t.host ? `Hosted by @${t.host.username ?? 'host'}` : '★ Official ClashGH cup'}</Text>
             </View>
           </ImageBackground>
 
@@ -315,6 +316,7 @@ const styles = StyleSheet.create({
   livePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,63,94,0.18)', borderRadius: radius.pill, paddingRight: spacing.md, paddingLeft: 2 },
   liveText: { color: colors.red, fontSize: typography.tiny, fontWeight: fontWeights.black, letterSpacing: 1 },
   title: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 8 },
+  hostLine: { color: colors.textMuted, fontSize: typography.tiny, fontWeight: fontWeights.semibold, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 6 },
   prize: { color: colors.gold, fontSize: 24, fontWeight: fontWeights.black, letterSpacing: -0.5 },
   entry: { color: colors.text, fontSize: typography.subheading, fontWeight: fontWeights.bold },
   track: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },

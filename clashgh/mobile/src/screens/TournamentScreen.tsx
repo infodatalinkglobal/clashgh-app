@@ -122,6 +122,9 @@ export function TournamentScreen({ navigation, route }: Props) {
                 {champion ? <Badge label="Champion 🏆" tone="gold" /> : eliminated ? <Badge label="Eliminated" tone="muted" /> : null}
               </View>
               <Text style={styles.title}>{t.title}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: typography.caption, fontWeight: fontWeights.semibold }}>
+                {t.host ? `Hosted by @${t.host.username ?? 'host'} · settled by ClashGH` : '★ Official ClashGH cup'}
+              </Text>
               {t.status === 'open' ? (
                 <Countdown to={t.closes_at} prefix="Registration closes in " style={{ color: colors.cyan, fontSize: typography.caption, fontWeight: fontWeights.semibold }} />
               ) : t.status === 'full' ? (
@@ -150,9 +153,16 @@ export function TournamentScreen({ navigation, route }: Props) {
                 <Split label="🥈 Runner-up" value={pesewasToGhs(runnerUp)} pct={t.runnerup_percent} />
               </View>
               <Text style={styles.meta2}>
-                Entry {pesewasToGhs(t.entry_fee_pesewas)} × {t.max_players} players · {100 - t.first_place_percent - t.runnerup_percent}% platform fee
+                Entry {pesewasToGhs(t.entry_fee_pesewas)} × {t.max_players} players · {100 - t.first_place_percent - t.runnerup_percent}% {t.host ? 'host & platform fee' : 'platform fee'}
               </Text>
             </View>
+
+            {t.rules_text ? (
+              <View style={styles.card}>
+                <Text style={styles.cardLabel}>House rules from the host</Text>
+                <Text style={{ color: colors.text, fontSize: typography.caption, lineHeight: 19 }}>{t.rules_text}</Text>
+              </View>
+            ) : null}
 
             {/* Schedule */}
             <View style={styles.card}>

@@ -11,6 +11,7 @@ import { MatchScreen } from '../screens/MatchScreen';
 import { SubmitResultScreen } from '../screens/SubmitResultScreen';
 import { TournamentScreen } from '../screens/TournamentScreen';
 import { InboxScreen } from '../screens/InboxScreen';
+import { HostScreen } from '../screens/HostScreen';
 import { WalletScreen } from '../screens/WalletScreen';
 import { MeScreen } from '../screens/MeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Me: undefined;
   Wallet: undefined;
   Inbox: undefined;
+  Host: undefined;
   Onboarding: undefined;
   SignIn: undefined;
 };
@@ -89,6 +91,7 @@ export function RootNavigator() {
         <Stack.Screen name="SubmitResult" component={SubmitResultScreen} />
         <Stack.Screen name="Wallet" component={WalletScreen} />
         <Stack.Screen name="Inbox" component={InboxScreen} />
+        <Stack.Screen name="Host" component={HostScreen} />
         <Stack.Screen
           name="Me"
           component={MeScreen}

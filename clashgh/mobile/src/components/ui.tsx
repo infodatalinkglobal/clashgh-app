@@ -214,6 +214,7 @@ export function TextField({
   hint,
   onSubmit,
   autoFocus = false,
+  multiline = false,
 }: {
   label: string;
   value: string;
@@ -226,6 +227,7 @@ export function TextField({
   hint?: string | null;
   onSubmit?: () => void;
   autoFocus?: boolean;
+  multiline?: boolean;
 }) {
   return (
     <View style={{ gap: spacing.xs }}>
@@ -240,10 +242,12 @@ export function TextField({
         keyboardType={keyboardType}
         secureTextEntry={secure}
         autoFocus={autoFocus}
+        multiline={multiline}
         onSubmitEditing={onSubmit}
         style={[
           styles.input,
           { borderColor: error ? colors.red : colors.border },
+          multiline && { minHeight: 88, textAlignVertical: 'top', paddingTop: spacing.md },
         ]}
       />
       {error ? (

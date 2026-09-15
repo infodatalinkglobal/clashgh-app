@@ -101,6 +101,29 @@ export interface Profile {
   role: 'player' | 'admin';
   is_banned: boolean;
   created_at: string;
+  host_status?: HostStatus;
+  host_note?: string | null;
+}
+
+export type HostStatus = 'none' | 'pending' | 'approved' | 'suspended';
+
+export interface HostLimits {
+  host_cut_max_percent: number;
+  platform_commission_percent: number;
+  min_entry_fee_pesewas: number;
+  min_players: number;
+  max_players: number;
+}
+
+export interface HostEarnings {
+  earned_pesewas: number;
+  pending_pesewas: number;
+  hosted_count: number;
+  completed_count: number;
+}
+
+export interface HostTournament extends Tournament {
+  host_share_status: 'pending' | 'success' | 'failed' | null;
 }
 
 export interface Tournament {
@@ -116,6 +139,9 @@ export interface Tournament {
   runnerup_percent: number;
   prize_pool_pesewas: number | null;
   platform_fee_pesewas: number | null;
+  host_share_pesewas: number | null;
+  host: { id: string; username: string | null } | null;
+  rules_text: string | null;
   status: TournamentStatus;
   created_at: string;
   paid_count: number;
@@ -128,6 +154,7 @@ export interface Tournament {
     first_prize_pesewas: number;
     runnerup_prize_pesewas: number;
     platform_fee_pesewas: number;
+    host_share_pesewas: number;
   };
 }
 
@@ -286,6 +313,21 @@ export const endpoints = {
     api.request<null>('/me/push-token', { method: 'DELETE', body: { token }, auth: true }),
   myNotifications: (limit = 30) =>
     api.request<{ notifications: NotificationRow[] }>(`/me/notifications?limit=${limit}`, { auth: true }),
+
+  // Community hosts
+  myHost: () =>
+    api.request<{ host_status: HostStatus; host_note: string | null; host_applied_at: string | null; limits: HostLimits; earnings: HostEarnings }>('/me/host', { auth: true }),
+  applyHost: (note: string) =>
+    api.request<{ host_status: HostStatus }>('/me/host/apply', { method: 'POST', body: { note }, auth: true }),
+  hostTournaments: () =>
+    api.request<{ tournaments: HostTournament[]; earnings: HostEarnings; limits: HostLimits }>('/host/tournaments', { auth: true }),
+  createHostTournament: (body: {
+    title: string; game: GameType; entry_fee_pesewas: number; max_players: number;
+    closes_at: string; starts_at: string; first_place_percent: number; runnerup_percent: number;
+    result_window_minutes?: number; rules_text?: string;
+  }) => api.request<{ tournament: Tournament }>('/host/tournaments', { method: 'POST', body, auth: true }),
+  cancelHostTournament: (id: string) =>
+    api.request<{ refunded_count: number }>(`/host/tournaments/${id}/cancel`, { method: 'POST', auth: true }),
 
   myTransactions: (params?: { limit?: number; offset?: number }) => {
     const qs = new URLSearchParams();

@@ -42,7 +42,8 @@ adminDashboardRouter.get('/admin/overview', asyncHandler(async (req, res) => {
         (SELECT count(*) FROM public.transactions WHERE type IN ('payout','refund','host_share') AND status = 'failed')::int AS failed_transfers,
         (SELECT count(*) FROM public.transactions WHERE type IN ('payout','refund','host_share') AND status = 'pending')::int AS pending_transfers,
         (SELECT count(*) FROM public.users WHERE role = 'player')::int AS players,
-        (SELECT count(*) FROM public.users WHERE is_banned)::int AS banned_players`),
+        (SELECT count(*) FROM public.users WHERE is_banned)::int AS banned_players,
+        (SELECT count(*) FROM public.users WHERE host_status = 'pending')::int AS pending_hosts`),
     pool.query(`
       SELECT m.id, m.tournament_id, t.title, t.game, m.match_round, m.match_number, m.dispute_reason, m.updated_at,
              u1.username AS player1, u2.username AS player2, m.player1_pick, m.player2_pick

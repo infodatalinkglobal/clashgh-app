@@ -27,6 +27,7 @@ interface AuthContextValue {
   signInWithEmail: (email: string) => Promise<void>;
   handleAuthUrl: (url: string) => Promise<void>;
   setProfileUsername: (username: string) => Promise<void>;
+  refreshProfile: () => Promise<void>;
   resolveMomo: (phone: string) => Promise<{ account_name: string | null; momo_provider: MomoProvider }>;
   saveMomo: (phone: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -110,6 +111,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const p = await authService.handleAuthUrl(url);
           setProfile(p);
         }),
+      refreshProfile: async () => {
+        const p = await authService.refreshProfile();
+        setProfile(p);
+      },
       setProfileUsername: async (username) => {
         await authService.setProfileUsername(username);
         const p = await authService.refreshProfile();

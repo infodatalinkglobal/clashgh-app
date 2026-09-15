@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -11,7 +12,8 @@ import { providerLabel, toLocalDisplay } from '../utils/phone';
 
 /** Account screen: profile, verification state, sign-out. */
 export function MeScreen() {
-  const { profile, signOut, busy } = useAuth();
+  const { profile, signOut, busy, refreshProfile } = useAuth();
+  useFocusEffect(useCallback(() => { void refreshProfile().catch(() => undefined); }, [refreshProfile]));
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   if (!profile) return null;
 
@@ -59,6 +61,11 @@ export function MeScreen() {
 
       <Button label="Wallet · winnings & fees →" variant="secondary" onPress={() => navigation.navigate('Wallet')} />
       <Button label="Notifications →" variant="secondary" onPress={() => navigation.navigate('Inbox')} />
+      <Button
+        label={profile.host_status === 'approved' ? '🎙️ Host Studio →' : profile.host_status === 'pending' ? 'Host application · under review →' : '🎙️ Become a host — earn from your own cups →'}
+        variant="secondary"
+        onPress={() => navigation.navigate('Host')}
+      />
 
       <View style={{ flex: 1 }} />
       <Button label="Sign out" variant="danger" busy={busy} onPress={() => void signOut()} />

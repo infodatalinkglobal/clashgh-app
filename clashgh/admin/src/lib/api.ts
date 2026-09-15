@@ -61,7 +61,7 @@ export type MStatus = 'pending' | 'active' | 'awaiting_results' | 'disputed' | '
 export interface Profile { id: string; email: string; username: string | null; role: 'player' | 'admin' }
 
 export interface Overview {
-  counts: { disputed_matches: number; open_tournaments: number; live_tournaments: number; lobbies_past_close: number; failed_transfers: number; pending_transfers: number; players: number; banned_players: number };
+  counts: { disputed_matches: number; open_tournaments: number; live_tournaments: number; lobbies_past_close: number; failed_transfers: number; pending_transfers: number; players: number; banned_players: number; pending_hosts?: number };
   disputes: { id: string; tournament_id: string; title: string; game: Game; match_round: number; match_number: number; dispute_reason: string | null; updated_at: string; player1: string | null; player2: string | null; player1_pick: string | null; player2_pick: string | null }[];
   lobby_health: { id: string; title: string; game: Game; status: TStatus; max_players: number; entry_fee_pesewas: number; closes_at: string; starts_at: string; paid_count: number; pending_count: number; fill_percent: number; hours_left: number; health: 'healthy' | 'near_full' | 'watch' | 'at_risk' | 'full' | 'full_awaiting_start' | 'past_close' }[];
   failed_transfers: { id: string; type: string; amount_pesewas: number; attempts: number; next_retry_at: string | null; updated_at: string; description: string; tournament_id: string | null; username: string; phone: string | null }[];
@@ -101,6 +101,12 @@ export interface Analytics {
 }
 
 // ---------------------------------------------------------------------------
+export interface Host {
+  id: string; username: string | null; email: string; phone: string | null;
+  host_status: 'pending' | 'approved' | 'suspended'; host_note: string | null; host_applied_at: string | null; created_at: string;
+  hosted_count: number; completed_count: number; cancelled_count: number; earned_pesewas: number; platform_commission_pesewas: number;
+}
+
 export const api = {
   devSignIn: (email: string) => request<{ access_token?: string; token?: string; profile?: Profile }>('/dev/auth/signin', { method: 'POST', body: { email } }),
   me: () => request<{ profile: Profile }>('/me'),
@@ -113,6 +119,8 @@ export const api = {
   disputes: () => request<{ disputes: Dispute[]; threshold: { rate: number; min_matches: number } }>('/admin/disputes'),
   resolve: (matchId: string, body: { resolution: 'award' | 'replay' | 'refund'; winner_id?: string }) => request<unknown>(`/admin/matches/${matchId}/resolve`, { method: 'POST', body }),
   players: (q: string) => request<{ players: Player[] }>(`/admin/players${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  hosts: (status?: string) => request<{ hosts: Host[]; limits: { host_cut_max_percent: number; platform_commission_percent: number; min_entry_fee_pesewas: number } }>(`/admin/hosts${status ? `?status=${status}` : ''}`),
+  hostAction: (id: string, action: 'approve' | 'suspend', reason?: string) => request<unknown>(`/admin/hosts/${id}/${action}`, { method: 'POST', body: { reason } }),
   ban: (id: string, banned: boolean, reason: string) => request<unknown>(`/admin/players/${id}/ban`, { method: 'POST', body: { banned, reason } }),
   audit: () => request<{ audit: AuditRow[] }>('/admin/audit?limit=200'),
   analytics: (days: number) => request<Analytics>(`/admin/analytics?days=${days}`),

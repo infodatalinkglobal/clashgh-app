@@ -6,6 +6,7 @@ import { TournamentsPage } from './pages/Tournaments';
 import { TournamentPage } from './pages/Tournament';
 import { DisputesPage } from './pages/Disputes';
 import { PlayersPage } from './pages/Players';
+import { HostsPage } from './pages/Hosts';
 import { AnalyticsPage } from './pages/Analytics';
 import { AuditPage } from './pages/Audit';
 
@@ -19,6 +20,7 @@ export type Route =
   | { page: 'tournament'; id: string }
   | { page: 'disputes' }
   | { page: 'players' }
+  | { page: 'hosts' }
   | { page: 'analytics' }
   | { page: 'audit' };
 
@@ -26,7 +28,7 @@ function parseHash(): Route {
   const h = location.hash.replace(/^#\/?/, '');
   const [page, id] = h.split('/');
   if (page === 'tournaments' && id) return { page: 'tournament', id };
-  if (['tournaments', 'disputes', 'players', 'analytics', 'audit'].includes(page)) return { page } as Route;
+  if (['tournaments', 'disputes', 'players', 'hosts', 'analytics', 'audit'].includes(page)) return { page } as Route;
   return { page: 'overview' };
 }
 
@@ -88,6 +90,7 @@ export default function App() {
         {nav('tournaments', 'Tournaments', counts?.live_tournaments, 'gold')}
         {nav('disputes', 'Disputes', counts?.disputed_matches)}
         {nav('players', 'Players')}
+        {nav('hosts', 'Hosts', counts?.pending_hosts, 'gold')}
         {nav('analytics', 'Analytics')}
         {nav('audit', 'Audit log')}
         <div className="spacer" />
@@ -100,6 +103,7 @@ export default function App() {
         {route.page === 'tournament' && <TournamentPage id={route.id} />}
         {route.page === 'disputes' && <DisputesPage />}
         {route.page === 'players' && <PlayersPage />}
+        {route.page === 'hosts' && <HostsPage />}
         {route.page === 'analytics' && <AnalyticsPage />}
         {route.page === 'audit' && <AuditPage />}
       </main>

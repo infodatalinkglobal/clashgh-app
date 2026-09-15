@@ -391,3 +391,26 @@ Known, accepted: rate limiter is per-process (single Render instance);
 Checked and fine: `max_players` is DB-constrained to 4/8/16/32/64 so the
 bracket math is safe; dispute-refund on in-progress cups refunds everyone by
 design; match screen polling stops on completion.
+
+## Community hosts — marketplace model (migration 006)
+
+ClashGH is the middleman: **anyone approved can host, all money still flows
+through the platform's Paystack account, and ClashGH takes a commission.**
+
+| Rule | Value | Where |
+|---|---|---|
+| Who can host | Verified player applies → admin approves (`host_status`) | `routes/hosts.js` |
+| Host cut | What remains after 1st + runner-up, **max 20 %** | `HOST_CUT_MAX_PERCENT` |
+| Commission | **50 % of the host cut** to ClashGH, 50 % to the host | `HOST_COMMISSION_PERCENT` |
+| Minimums | entry ≥ ₵5 (`HOST_MIN_ENTRY_PESEWAS`), runner-up ≥ ₵10 floor, 4–64 players | validator |
+| Host payout | `host_share` transaction on the same auto-MoMo pipeline as prizes (retries 15m/1h/6h) | `services/payment.js` |
+| Host powers | create + cancel own (not started) tournaments; disputes/refunds/payouts stay with ClashGH | `routes/hosts.js` |
+| Official cups | `host_id NULL` → whole remainder is platform fee (unchanged) | `utils/prize.js` |
+
+Worked example: ₵10 × 16 = ₵160, host cut 10 % → 🥇 ₵112 · 🥈 ₵32 · host ₵8 · ClashGH ₵8.
+Money invariant now checks `entry fees = prizes + host share + platform fee` per completed tournament.
+
+Endpoints: `GET /api/me/host`, `POST /api/me/host/apply {note}`, `POST/GET /api/host/tournaments`,
+`POST /api/host/tournaments/:id/cancel`, `GET /api/admin/hosts?status=`, `POST /api/admin/hosts/:id/approve|suspend`.
+Public tournament payload gains `host {id, username} | null`, `host_share_pesewas`, `rules_text`,
+`projection_if_full.host_share_pesewas`.

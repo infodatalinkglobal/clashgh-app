@@ -825,3 +825,8 @@ Cached bracket/prize data goes stale while offline.
 Last updated: 2026-09-14
 Version: 2.0
 Next module to build: 2B — Home & Lobby
+
+
+## Addendum — Community hosts (marketplace), 2026-09-15
+
+Decided with the owner: ClashGH is a middleman. Verified players apply to host, an admin approves. Hosts create/cancel their own tournaments (fee, size, times, cut ≤ 20 %, rules text); everything else (escrow, brackets, disputes, refunds, payouts) stays platform-run. The host cut is split **50/50** host/ClashGH and paid by the same MoMo transfer pipeline as prizes. Official cups are unchanged (host = null). See `backend/README.md` → Community hosts. Status: ✅ backend + mobile Host Studio + admin Hosts page.
