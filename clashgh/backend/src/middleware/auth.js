@@ -37,7 +37,7 @@ export function issueToken(userId, email) {
 }
 
 const PROFILE_FIELDS =
-  'id, email, phone, phone_verified, username, momo_provider, role, is_banned, created_at';
+  'id, email, phone, phone_verified, username, momo_provider, role, is_banned, created_at, host_status, host_note, host_applied_at';
 
 /**
  * requireAuth — verify the Bearer JWT and load the profile row.

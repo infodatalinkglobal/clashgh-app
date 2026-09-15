@@ -41,7 +41,7 @@ function requireDate(value, name) {
   return new Date(time);
 }
 
-function validateTournamentCreate(body) {
+export function validateTournamentCreate(body) {
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   if (title.length < 3 || title.length > 120) {
     throw new ApiError(400, 'Title must be 3-120 characters');
@@ -119,12 +119,12 @@ function holdingSlot(ttlParamIndex) {
   return `(payment_status = 'paid' OR (payment_status = 'pending' AND created_at > ${PENDING_TTL_SQL.replace('$1', `$${ttlParamIndex}`)}))`;
 }
 
-function tournamentPayload(row, now = new Date()) {
+export function tournamentPayload(row, now = new Date()) {
   const paid = Number(row.paid_count);
   const pending = Number(row.pending_count);
   const spotsLeft = row.max_players - paid - pending;
   const totalIfFull = row.entry_fee_pesewas * row.max_players;
-  const split = computeSplit(totalIfFull, row.first_place_percent, row.runnerup_percent);
+  const split = computeSplit(totalIfFull, row.first_place_percent, row.runnerup_percent, row.host_id ? env.hostCommissionPercent : null);
   return {
     id: row.id,
     title: row.title,
@@ -138,6 +138,10 @@ function tournamentPayload(row, now = new Date()) {
     runnerup_percent: row.runnerup_percent,
     prize_pool_pesewas: row.prize_pool_pesewas,
     platform_fee_pesewas: row.platform_fee_pesewas,
+    host_share_pesewas: row.host_share_pesewas ?? null,
+    // Community-hosted (marketplace) vs official ClashGH cup.
+    host: row.host_id ? { id: row.host_id, username: row.host_username ?? null } : null,
+    rules_text: row.rules_text ?? null,
     status: row.status,
     created_at: row.created_at,
     // Lobby state (pending outside the 10-min window no longer holds a slot)
@@ -152,20 +156,21 @@ function tournamentPayload(row, now = new Date()) {
       first_prize_pesewas: split.first,
       runnerup_prize_pesewas: split.runnerup,
       platform_fee_pesewas: split.platform,
+      host_share_pesewas: split.host,
     },
   };
 }
 
 async function fetchTournament(client, id) {
   const { rows } = await client.query(
-    `SELECT t.*,
+    `SELECT t.*, h.username AS host_username,
             (SELECT count(*) FROM public.registrations r
               WHERE r.tournament_id = t.id AND r.payment_status = 'paid') AS paid_count,
             (SELECT count(*) FROM public.registrations r
               WHERE r.tournament_id = t.id
                 AND r.payment_status = 'pending'
                 AND r.created_at > now() - make_interval(mins => $2)) AS pending_count
-     FROM public.tournaments t
+     FROM public.tournaments t LEFT JOIN public.users h ON h.id = t.host_id
      WHERE t.id = $1`,
     [id, env.registrationPendingTtlMinutes],
   );
@@ -216,14 +221,14 @@ tournamentRouter.get('/', asyncHandler(async (req, res) => {
   const offset = requireNumber(req.query.offset, 'offset', { min: 0 }) ?? 0;
 
   const { rows } = await pool.query(
-    `SELECT t.*,
+    `SELECT t.*, h.username AS host_username,
             (SELECT count(*) FROM public.registrations r
               WHERE r.tournament_id = t.id AND r.payment_status = 'paid') AS paid_count,
             (SELECT count(*) FROM public.registrations r
               WHERE r.tournament_id = t.id
                 AND r.payment_status = 'pending'
                 AND r.created_at > now() - make_interval(mins => $3)) AS pending_count
-     FROM public.tournaments t
+     FROM public.tournaments t LEFT JOIN public.users h ON h.id = t.host_id
      WHERE ($1::public.game_type IS NULL OR t.game = $1)
        AND ($2::public.tournament_status IS NULL OR t.status = $2)
      ORDER BY t.closes_at ASC, t.created_at ASC

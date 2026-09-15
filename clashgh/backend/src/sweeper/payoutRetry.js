@@ -22,7 +22,7 @@ export async function runPayoutRetrySweep() {
   const { rows } = await pool.query(
     `SELECT id, user_id, amount_pesewas, attempts, tournament_id
      FROM public.transactions
-     WHERE type = 'payout'
+     WHERE type IN ('payout', 'host_share')
        AND status = 'failed'
        AND attempts < $1
        AND (next_retry_at IS NULL OR next_retry_at <= now())`,

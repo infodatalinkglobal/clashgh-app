@@ -195,7 +195,27 @@ export const TEMPLATES = {
     },
   }),
 
+  // ---- hosts ----
+  host_approved: (u, p) => ({
+    push: { title: 'You are now a ClashGH host 🎙️', body: 'Open Host Studio in your account to publish your first tournament.' },
+    email: {
+      subject: 'Welcome aboard — you can now host tournaments on ClashGH',
+      text: `Hi ${u.username},\n\nYour host application is approved. Open Account → Host Studio in the app to publish a tournament.\n\nHow the money works: players pay entry fees into ClashGH escrow. After the final, prizes go to the winners and the remainder (your cut, max ${env.hostCutMaxPercent}%) is split ${100 - env.hostCommissionPercent}% to you / ${env.hostCommissionPercent}% to ClashGH, sent straight to your MoMo.\n\nRun clean, on-time tournaments — disputes and refunds are handled by ClashGH.`,
+    },
+  }),
+  host_suspended: (u, p) => ({
+    push: { title: 'Host access suspended', body: p.reason || 'Contact support for details.' },
+    email: { subject: 'Your ClashGH host access has been suspended', text: `Hi ${u.username},\n\nYour host access was suspended.${p.reason ? `\nReason: ${p.reason}` : ''}\n\nExisting tournaments continue to be settled by ClashGH. Reply to this email to appeal.` },
+  }),
+
   // ---- admin alerts (user_id NULL → ADMIN_ALERT_EMAIL) ----
+  admin_host_application: (u, p) => ({
+    push: null,
+    email: {
+      subject: `[ClashGH] Host application: ${p.username}`,
+      text: `${p.username} (${p.email}) wants to host.\n\n"${p.note}"\n\nApprove or decline in the admin panel → Hosts.\nuser_id: ${p.user_id}`,
+    },
+  }),
   admin_dispute: (u, p) => ({
     push: null,
     email: {

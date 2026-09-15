@@ -6,13 +6,26 @@
  * the remainder (default 10) and absorbs any rounding (<= 2 pesewas).
  */
 
-export function computeSplit(totalPesewas, firstPercent, runnerupPercent) {
+/**
+ * @param hostCommissionPercent  For HOSTED tournaments: the platform's share
+ *   of the remainder (host cut). 50 = split 50/50 with the host. Pass null
+ *   (default) for official tournaments — the whole remainder is platform fee.
+ *   Host gets the floor, platform absorbs rounding, so `first + runnerup +
+ *   host + platform === total` always holds (money invariant).
+ */
+export function computeSplit(totalPesewas, firstPercent, runnerupPercent, hostCommissionPercent = null) {
   const first = Math.floor((totalPesewas * firstPercent) / 100);
   const runnerup = Math.floor((totalPesewas * runnerupPercent) / 100);
-  const platform = totalPesewas - first - runnerup;
+  const remainder = totalPesewas - first - runnerup;
+  let host = 0;
+  if (hostCommissionPercent !== null && hostCommissionPercent !== undefined) {
+    host = Math.floor((remainder * (100 - hostCommissionPercent)) / 100);
+  }
+  const platform = remainder - host;
   return {
     first,
     runnerup,
+    host,
     platform,
     prize_pool: first + runnerup,
   };

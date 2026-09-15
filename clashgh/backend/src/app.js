@@ -9,6 +9,7 @@ import { tournamentRouter } from './routes/tournaments.js';
 import { matchRouter } from './routes/matches.js';
 import { devAuthRouter } from './routes/devAuth.js';
 import { devPayRouter } from './routes/devPay.js';
+import { hostsRouter } from './routes/hosts.js';
 import { paystackWebhookHandler } from './routes/webhooks.js';
 import { uploadsRouter, mountLocalScreenshotStatic } from './routes/uploads.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
@@ -57,6 +58,7 @@ export function createApp() {
   app.use('/api', notificationsRouter);
   app.use('/api', adminRouter);
   app.use('/api', adminDashboardRouter);
+  app.use('/api', hostsRouter);
   app.use('/api/tournaments', tournamentRouter);
   app.use('/api/matches', matchRouter);
   app.use('/api', uploadsRouter);

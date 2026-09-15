@@ -148,7 +148,8 @@ authRouter.get(
          coalesce(sum(amount_pesewas) FILTER (WHERE type = 'entry_fee' AND status = 'success'), 0)::int AS fees_paid_pesewas,
          coalesce(sum(amount_pesewas) FILTER (WHERE type = 'payout'    AND status = 'success'), 0)::int AS winnings_pesewas,
          coalesce(sum(amount_pesewas) FILTER (WHERE type = 'refund'    AND status = 'success'), 0)::int AS refunds_pesewas,
-         coalesce(sum(amount_pesewas) FILTER (WHERE type IN ('payout','refund') AND status = 'pending'), 0)::int AS pending_out_pesewas,
+         coalesce(sum(amount_pesewas) FILTER (WHERE type = 'host_share' AND status = 'success'), 0)::int AS host_earnings_pesewas,
+         coalesce(sum(amount_pesewas) FILTER (WHERE type IN ('payout','refund','host_share') AND status = 'pending'), 0)::int AS pending_out_pesewas,
          count(*) FILTER (WHERE type = 'payout' AND status = 'success')::int AS payouts_count
        FROM public.transactions
        WHERE user_id = $1`,

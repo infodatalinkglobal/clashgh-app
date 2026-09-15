@@ -77,6 +77,11 @@ export const env = {
   // Browser origins allowed in production (comma-separated; admin panel URL).
   // Directory of an `expo export --platform web` build to serve at `/` (optional).
   webDist: process.env.WEB_DIST || '',
+  // Community hosts: platform's share of the host cut (50 = 50/50), and the
+  // cap on the host cut so prize pools stay >= 80% of fees.
+  hostCommissionPercent: Number(process.env.HOST_COMMISSION_PERCENT ?? 50),
+  hostCutMaxPercent: Number(process.env.HOST_CUT_MAX_PERCENT ?? 20),
+  hostMinEntryPesewas: Number(process.env.HOST_MIN_ENTRY_PESEWAS ?? 500),
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
 

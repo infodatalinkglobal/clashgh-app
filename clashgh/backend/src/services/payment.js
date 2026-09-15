@@ -309,7 +309,7 @@ export async function updateTransferStatus(transferCode, newStatus) {
   // failed
   let finalFailure = false;
   let nextRetryAt = null;
-  if (tx.type === 'payout') {
+  if (tx.type === 'payout' || tx.type === 'host_share') {
     if (tx.attempts >= MAX_PAYOUT_RETRIES) {
       finalFailure = true;
     } else {
@@ -376,7 +376,7 @@ export async function executePayout(tournamentId, { force = false } = {}) {
 
     const { rows: existing } = await client.query(
       `SELECT id, user_id, amount_pesewas, status, attempts, paystack_transfer_code
-       FROM public.transactions WHERE match_id = $1 AND type = 'payout' ORDER BY id`,
+       FROM public.transactions WHERE match_id = $1 AND type IN ('payout', 'host_share') ORDER BY id`,
       [finalMatch.id],
     );
 
@@ -386,11 +386,19 @@ export async function executePayout(tournamentId, { force = false } = {}) {
     }
 
     const total = t.entry_fee_pesewas * t.max_players;
-    const split = computeSplit(total, t.first_place_percent, t.runnerup_percent);
+    const split = computeSplit(total, t.first_place_percent, t.runnerup_percent, t.host_id ? env.hostCommissionPercent : null);
     let newlyCreated = false;
 
     if (existing.length === 0) {
       newlyCreated = true;
+      // The platform-fee ledger row is booked against a platform account:
+      // the creating admin for official cups; for hosted cups (created_by =
+      // the host) the oldest admin, so a host's ledger never shows it.
+      let platformAccountId = t.created_by;
+      if (t.host_id) {
+        const { rows: [adm] } = await client.query(`SELECT id FROM public.users WHERE role = 'admin' ORDER BY created_at ASC LIMIT 1`);
+        platformAccountId = adm?.id ?? t.created_by;
+      }
       for (const [userId, amount, label] of [
         [championId, split.first, 'Champion prize'],
         [runnerUpId, split.runnerup, 'Runner-up prize'],
@@ -405,11 +413,25 @@ export async function executePayout(tournamentId, { force = false } = {}) {
         if (isLive) toTransfer.push({ ...tx, isRetry: false });
         else await notifyMoneySent(client, { ...tx, type: 'payout', tournament_id: t.id, description: label });
       }
+      // Hosted tournament: the host's share rides the same transfer pipeline
+      // (pending → Paystack transfer → success, with retries). A host whose
+      // MoMo number is missing gets a failed row the admin can re-run.
+      if (t.host_id && split.host > 0) {
+        const { rows: [htx] } = await client.query(
+          `INSERT INTO public.transactions
+             (user_id, tournament_id, match_id, type, amount_pesewas, status, direction, description)
+           VALUES ($1, $2, $3, 'host_share', $4, $5, 'out', $6)
+           RETURNING id, user_id, amount_pesewas`,
+          [t.host_id, t.id, finalMatch.id, split.host, isLive ? 'pending' : 'success', `Host share — ${t.title}`],
+        );
+        if (isLive) toTransfer.push({ ...htx, isRetry: false });
+        else await notifyMoneySent(client, { ...htx, type: 'host_share', tournament_id: t.id, description: 'Host share' });
+      }
       await client.query(
         `INSERT INTO public.transactions
            (user_id, tournament_id, match_id, type, amount_pesewas, status, direction, description)
          VALUES ($1, $2, $3, 'platform_fee', $4, 'success', 'out', $5)`,
-        [t.created_by, t.id, finalMatch.id, split.platform, `Platform fee — ${t.title}`],
+        [platformAccountId, t.id, finalMatch.id, split.platform, `Platform fee — ${t.title}`],
       );
       await client.query(`UPDATE public.tournaments SET status = 'completed' WHERE id = $1`, [t.id]);
     } else if (force) {
@@ -483,6 +505,8 @@ export async function notifyMoneySent(q, tx) {
   } else if (tx.type === 'payout') {
     const label = /runner/i.test(tx.description ?? '') ? 'Runner-up prize' : 'Champion prize';
     await notify(q, { userId: tx.user_id, template: 'payout_sent', payload: { ...payload, label } });
+  } else if (tx.type === 'host_share') {
+    await notify(q, { userId: tx.user_id, template: 'payout_sent', payload: { ...payload, label: 'Host share' } });
   }
 }
 

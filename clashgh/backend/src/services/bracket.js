@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { pool } from '../db/pool.js';
+import { env } from '../config/env.js';
 import { computeSplit } from '../utils/prize.js';
 
 /**
@@ -91,10 +92,10 @@ export async function generateBracket(tournamentId) {
 
     // 5: fix the money at bracket generation (integer pesewa math)
     const total = t.entry_fee_pesewas * t.max_players;
-    const split = computeSplit(total, t.first_place_percent, t.runnerup_percent);
+    const split = computeSplit(total, t.first_place_percent, t.runnerup_percent, t.host_id ? env.hostCommissionPercent : null);
     await client.query(
-      `UPDATE public.tournaments SET prize_pool_pesewas = $2, platform_fee_pesewas = $3 WHERE id = $1`,
-      [tournamentId, split.prize_pool, split.platform],
+      `UPDATE public.tournaments SET prize_pool_pesewas = $2, platform_fee_pesewas = $3, host_share_pesewas = $4 WHERE id = $1`,
+      [tournamentId, split.prize_pool, split.platform, t.host_id ? split.host : null],
     );
 
     await client.query('COMMIT');
@@ -105,6 +106,7 @@ export async function generateBracket(tournamentId) {
       matches: t.max_players - 1,
       prize_pool_pesewas: split.prize_pool,
       platform_fee_pesewas: split.platform,
+      host_share_pesewas: split.host,
     };
   } catch (err) {
     await client.query('ROLLBACK');

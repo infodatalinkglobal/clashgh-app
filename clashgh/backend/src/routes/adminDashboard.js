@@ -39,8 +39,8 @@ adminDashboardRouter.get('/admin/overview', asyncHandler(async (req, res) => {
         (SELECT count(*) FROM public.tournaments WHERE status = 'open')::int AS open_tournaments,
         (SELECT count(*) FROM public.tournaments WHERE status = 'in_progress')::int AS live_tournaments,
         (SELECT count(*) FROM public.tournaments WHERE status = 'open' AND closes_at < now())::int AS lobbies_past_close,
-        (SELECT count(*) FROM public.transactions WHERE type IN ('payout','refund') AND status = 'failed')::int AS failed_transfers,
-        (SELECT count(*) FROM public.transactions WHERE type IN ('payout','refund') AND status = 'pending')::int AS pending_transfers,
+        (SELECT count(*) FROM public.transactions WHERE type IN ('payout','refund','host_share') AND status = 'failed')::int AS failed_transfers,
+        (SELECT count(*) FROM public.transactions WHERE type IN ('payout','refund','host_share') AND status = 'pending')::int AS pending_transfers,
         (SELECT count(*) FROM public.users WHERE role = 'player')::int AS players,
         (SELECT count(*) FROM public.users WHERE is_banned)::int AS banned_players`),
     pool.query(`
@@ -65,7 +65,7 @@ adminDashboardRouter.get('/admin/overview', asyncHandler(async (req, res) => {
       SELECT tx.id, tx.type, tx.amount_pesewas, tx.attempts, tx.next_retry_at, tx.updated_at, tx.description,
              tx.tournament_id, u.username, u.phone
       FROM public.transactions tx JOIN public.users u ON u.id = tx.user_id
-      WHERE tx.type IN ('payout','refund') AND tx.status = 'failed'
+      WHERE tx.type IN ('payout','refund','host_share') AND tx.status = 'failed'
       ORDER BY tx.updated_at ASC LIMIT 20`),
     pool.query(`
       SELECT
@@ -75,8 +75,10 @@ adminDashboardRouter.get('/admin/overview', asyncHandler(async (req, res) => {
         coalesce(sum(amount_pesewas) FILTER (WHERE type='entry_fee' AND status='success' AND created_at > now() - interval '7 days'), 0)::int AS collected_7d,
         coalesce(sum(amount_pesewas) FILTER (WHERE type='payout' AND status='success'), 0)::int AS paid_out_total,
         coalesce(sum(amount_pesewas) FILTER (WHERE type='refund' AND status='success'), 0)::int AS refunded_total,
+        coalesce(sum(amount_pesewas) FILTER (WHERE type='host_share' AND status='success'), 0)::int AS host_shares_total,
+        coalesce(sum(amount_pesewas) FILTER (WHERE type='platform_fee' AND status='success'), 0)::int AS platform_fees_total,
         coalesce(sum(amount_pesewas) FILTER (WHERE type='entry_fee' AND status='success'), 0)::int
-          - coalesce(sum(amount_pesewas) FILTER (WHERE type IN ('payout','refund','platform_fee') AND status='success'), 0)::int AS in_escrow
+          - coalesce(sum(amount_pesewas) FILTER (WHERE type IN ('payout','refund','platform_fee','host_share') AND status='success'), 0)::int AS in_escrow
       FROM public.transactions`),
     pool.query(`
       SELECT id, action, entity_type, entity_id, details, created_at
@@ -116,8 +118,8 @@ adminDashboardRouter.get('/admin/tournaments', asyncHandler(async (req, res) => 
            (SELECT count(*) FROM public.matches m WHERE m.tournament_id = t.id AND m.status = 'completed')::int AS completed_matches,
            (SELECT count(*) FROM public.matches m WHERE m.tournament_id = t.id)::int AS total_matches,
            (SELECT coalesce(sum(amount_pesewas),0) FROM public.transactions x WHERE x.tournament_id = t.id AND x.type='entry_fee' AND x.status='success')::int AS collected_pesewas,
-           (SELECT coalesce(sum(amount_pesewas),0) FROM public.transactions x WHERE x.tournament_id = t.id AND x.type IN ('payout','refund') AND x.status='success')::int AS paid_out_pesewas,
-           (SELECT count(*) FROM public.transactions x WHERE x.tournament_id = t.id AND x.type IN ('payout','refund') AND x.status='failed')::int AS failed_transfers
+           (SELECT coalesce(sum(amount_pesewas),0) FROM public.transactions x WHERE x.tournament_id = t.id AND x.type IN ('payout','refund','host_share') AND x.status='success')::int AS paid_out_pesewas,
+           (SELECT count(*) FROM public.transactions x WHERE x.tournament_id = t.id AND x.type IN ('payout','refund','host_share') AND x.status='failed')::int AS failed_transfers
     FROM public.tournaments t
     LEFT JOIN public.users u ON u.id = t.created_by
     WHERE ($1::text IS NULL OR t.status::text = $1)

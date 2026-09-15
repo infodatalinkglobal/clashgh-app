@@ -592,7 +592,7 @@ export async function runMoneyInvariantCheck() {
   // 5-minute grace: a just-completed tournament may still have its payout
   // transaction in flight; the hourly re-check catches anything real.
   const { rows: completed } = await pool.query(
-    `SELECT id, title FROM public.tournaments
+    `SELECT id, title, host_id, host_share_pesewas FROM public.tournaments
      WHERE status = 'completed' AND updated_at < now() - interval '5 minutes'`,
   );
   for (const t of completed) {
@@ -601,13 +601,21 @@ export async function runMoneyInvariantCheck() {
          (count(*) FILTER (WHERE type = 'payout' AND status = 'success'))::int AS payouts_ok,
          (count(*) FILTER (WHERE type = 'payout'))::int AS payouts_total,
          (count(*) FILTER (WHERE type = 'platform_fee'))::int AS platform_fees,
-         (count(*) FILTER (WHERE type = 'payout' AND status = 'failed'))::int AS payouts_failed
+         (count(*) FILTER (WHERE type = 'payout' AND status = 'failed'))::int AS payouts_failed,
+         (count(*) FILTER (WHERE type = 'host_share' AND status = 'success'))::int AS host_ok,
+         coalesce(sum(amount_pesewas) FILTER (WHERE type = 'entry_fee' AND status = 'success'), 0)::int AS fees_in,
+         coalesce(sum(amount_pesewas) FILTER (WHERE type IN ('payout','platform_fee','host_share')), 0)::int AS money_out
        FROM public.transactions WHERE tournament_id = $1`,
       [t.id],
     );
-    if (c.payouts_ok !== 2 || c.platform_fees !== 1) {
+    const expectHost = t.host_id && (t.host_share_pesewas ?? 0) > 0 ? 1 : 0;
+    if (c.payouts_ok !== 2 || c.platform_fees !== 1 || c.host_ok !== expectHost) {
       violations.push(
-        `completed tournament '${t.title}' (${t.id}): expected 2 successful payouts + 1 platform fee, got payouts ${c.payouts_ok}/${c.payouts_total} (failed: ${c.payouts_failed}), platform fees ${c.platform_fees}`,
+        `completed tournament '${t.title}' (${t.id}): expected 2 successful payouts + 1 platform fee + ${expectHost} host share, got payouts ${c.payouts_ok}/${c.payouts_total} (failed: ${c.payouts_failed}), platform fees ${c.platform_fees}, host shares ${c.host_ok}`,
+      );
+    } else if (c.fees_in !== c.money_out) {
+      violations.push(
+        `completed tournament '${t.title}' (${t.id}): fees in ${c.fees_in} != prizes + host + platform out ${c.money_out}`,
       );
     }
   }
