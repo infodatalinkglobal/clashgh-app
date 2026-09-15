@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,8 +18,12 @@ export function MeScreen() {
   if (!profile) return null;
 
   return (
-    <Screen>
-      <Button label="‹ Back" variant="ghost" onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', minHeight: 36, paddingVertical: spacing.xs }} />
+    <Screen style={{ padding: 0 }}>
+      <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Button label="‹ Back" variant="ghost" onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', minHeight: 36, paddingVertical: spacing.xs }} />
+        <Button label="Sign out" variant="ghost" busy={busy} onPress={() => void signOut()} style={{ minHeight: 36, paddingVertical: spacing.xs, borderColor: colors.red }} />
+      </View>
       <Text style={{ color: colors.text, fontSize: typography.title, fontWeight: fontWeights.black, letterSpacing: -0.5 }}>Account</Text>
 
       <FadeIn>
@@ -67,8 +71,8 @@ export function MeScreen() {
         onPress={() => navigation.navigate('Host')}
       />
 
-      <View style={{ flex: 1 }} />
-      <Button label="Sign out" variant="danger" busy={busy} onPress={() => void signOut()} />
+      <Button label="Sign out" variant="danger" busy={busy} onPress={() => void signOut()} style={{ marginTop: spacing.lg }} />
+      </ScrollView>
     </Screen>
   );
 }
