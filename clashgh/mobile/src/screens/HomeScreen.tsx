@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   FlatList,
+  ImageBackground,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -8,6 +9,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   endpoints,
@@ -19,19 +21,13 @@ import {
   type TournamentStatus,
 } from '../services/api';
 import { useAuth } from '../store/AuthContext';
-import { Badge, Button, Screen } from '../components/ui';
-import { colors, fontWeights, radius, spacing, typography } from '../theme';
+import { Badge, Button, Countdown, Eyebrow, FadeIn, LiveDot, Screen, Skeleton } from '../components/ui';
+import { GAMES, HERO_ART, colors, fontWeights, radius, spacing, typography } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-const GAME_LABELS: Record<GameType, string> = {
-  efootball: 'eFootball',
-  fc_mobile: 'FC Mobile',
-  codm: 'CODM',
-  dls: 'DLS',
-};
 
 const FILTERS: { key: GameType | 'all'; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -112,102 +108,123 @@ export function HomeScreen({ navigation }: Props) {
     void load(g);
   };
 
-  const renderCard = ({ item: t }: { item: Tournament }) => {
+  const renderCard = ({ item: t, index }: { item: Tournament; index: number }) => {
     const reg = registrations[t.id];
+    const g = GAMES[t.game];
     const paid = t.paid_count;
+    const fillPct = Math.min(100, Math.round((paid / t.max_players) * 100));
+    const live = t.status === 'in_progress';
     const spotsText =
-      t.status === 'cancelled'
-        ? 'Cancelled'
-        : t.spots_left > 0
-          ? `${t.spots_left} spot${t.spots_left === 1 ? '' : 's'} left`
+      t.status === 'cancelled' ? 'Cancelled'
+        : t.spots_left > 0 ? `${t.spots_left} spot${t.spots_left === 1 ? '' : 's'} left`
           : 'Lobby full';
+    const topPrize = pesewasToGhs(t.prize_pool_pesewas ?? t.projection_if_full.first_prize_pesewas);
     return (
-      <Pressable
-        onPress={() => navigation.navigate('Tournament', { tournamentId: t.id })}
-        style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-            <Badge label={GAME_LABELS[t.game]} tone="gold" />
-            <Badge label={t.status.replace('_', ' ')} tone={STATUS_TONE[t.status]} />
+      <FadeIn delay={Math.min(index, 6) * 60}>
+        <Pressable
+          onPress={() => navigation.navigate('Tournament', { tournamentId: t.id })}
+          style={({ pressed }) => [styles.card, { borderColor: pressed ? g.accent : colors.border }, pressed && { transform: [{ scale: 0.99 }] }]}
+        >
+          <ImageBackground source={g.art} style={styles.cardArt} imageStyle={{ borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg }}>
+            <LinearGradient colors={['rgba(7,9,13,0.05)', 'rgba(7,9,13,0.55)', colors.surface]} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} />
+            <View style={styles.cardArtTop}>
+              <View style={[styles.gamePill, { borderColor: g.accent }]}>
+                <Text style={{ color: g.accent, fontSize: typography.tiny, fontWeight: fontWeights.bold, letterSpacing: 1 }}>{g.label.toUpperCase()}</Text>
+              </View>
+              {live ? (
+                <View style={styles.livePill}><LiveDot size={6} /><Text style={styles.liveText}>LIVE</Text></View>
+              ) : (
+                <Badge label={t.status.replace('_', ' ')} tone={STATUS_TONE[t.status]} />
+              )}
+            </View>
+            <View style={{ padding: spacing.lg, paddingBottom: 0 }}>
+              <Text style={styles.title} numberOfLines={2}>{t.title}</Text>
+            </View>
+          </ImageBackground>
+
+          <View style={{ padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <View>
+                <Eyebrow>Top prize</Eyebrow>
+                <Text style={styles.prize}>{topPrize}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Eyebrow>Entry</Eyebrow>
+                <Text style={styles.entry}>{pesewasToGhs(t.entry_fee_pesewas)}</Text>
+              </View>
+            </View>
+
+            <View style={{ gap: spacing.xs }}>
+              <View style={styles.track}>
+                <LinearGradient colors={[g.accent, colors.gold]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[styles.fill, { width: `${fillPct}%` }]} />
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={styles.meta}>{paid}/{t.max_players} players · {spotsText}</Text>
+                {t.status === 'open' ? (
+                  <Countdown to={t.closes_at} prefix="Closes in " style={[styles.meta, { color: colors.cyan }]} />
+                ) : (
+                  <Text style={styles.meta}>Starts {relativeTime(t.starts_at)}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+              {t.status === 'cancelled' ? (
+                <Badge label="Cancelled" tone="red" />
+              ) : reg?.payment_status === 'paid' ? (
+                <Badge label="You're in ✓" tone="green" />
+              ) : reg?.payment_status === 'pending' ? (
+                <Button label="Finish payment →" onPress={() => navigation.navigate('Join', { tournamentId: t.id, resumeReference: reg.payment_reference, resumeDeadline: reg.payment_deadline })} />
+              ) : t.can_join ? (
+                <Button label="Join now" onPress={() => navigation.navigate('Join', { tournamentId: t.id })} />
+              ) : t.status === 'full' || t.status === 'in_progress' || t.status === 'completed' ? (
+                <Button label={live ? 'Watch live →' : 'View bracket →'} variant="secondary" onPress={() => navigation.navigate('Tournament', { tournamentId: t.id })} />
+              ) : (
+                <Badge label="Closed" tone="muted" />
+              )}
+            </View>
           </View>
-          <Text style={{ color: colors.gold, fontSize: typography.subheading, fontWeight: fontWeights.bold }}>
-            {pesewasToGhs(t.entry_fee_pesewas)}
-          </Text>
-        </View>
-
-        <Text style={styles.title} numberOfLines={2}>
-          {t.title}
-        </Text>
-
-        <Text style={styles.meta}>
-          Entry {pesewasToGhs(t.entry_fee_pesewas)} · {paid}/{t.max_players} paid · {spotsText}
-        </Text>
-        <Text style={styles.meta2}>
-          1st {pesewasToGhs(t.prize_pool_pesewas ?? t.projection_if_full.first_prize_pesewas)} ·
-          {' '}Runner-up {pesewasToGhs(t.projection_if_full.runnerup_prize_pesewas)}
-        </Text>
-        <Text style={styles.meta2}>
-          Closes {relativeTime(t.closes_at)} · Starts {relativeTime(t.starts_at)}
-        </Text>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: spacing.xs }}>
-          {t.status === 'cancelled' ? (
-            <Badge label="Cancelled" tone="red" />
-          ) : reg?.payment_status === 'paid' ? (
-            <Badge label="You're in ✓" tone="green" />
-          ) : reg?.payment_status === 'pending' ? (
-            <Button
-              label="Finish payment →"
-              onPress={() =>
-                navigation.navigate('Join', {
-                  tournamentId: t.id,
-                  resumeReference: reg.payment_reference,
-                  resumeDeadline: reg.payment_deadline,
-                })
-              }
-            />
-          ) : t.can_join ? (
-            <Button label="Join" onPress={() => navigation.navigate('Join', { tournamentId: t.id })} />
-          ) : t.status === 'full' || t.status === 'in_progress' || t.status === 'completed' ? (
-            <Button
-              label={t.status === 'in_progress' ? 'Live · bracket →' : 'View bracket →'}
-              variant="secondary"
-              onPress={() => navigation.navigate('Tournament', { tournamentId: t.id })}
-            />
-          ) : (
-            <Badge label="Closed" tone="muted" />
-          )}
-        </View>
-      </Pressable>
+        </Pressable>
+      </FadeIn>
     );
   };
 
+  const liveCount = tournaments.filter((t) => t.status === 'in_progress').length;
+  const openCount = tournaments.filter((t) => t.status === 'open').length;
+
   return (
     <Screen style={{ padding: 0, gap: 0 }}>
-      <View style={{ padding: spacing.xl, paddingBottom: spacing.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={styles.header}>Tournaments</Text>
+      <ImageBackground source={HERO_ART} style={styles.hero} imageStyle={{ opacity: 0.9 }}>
+        <LinearGradient colors={['rgba(7,9,13,0.15)', 'rgba(7,9,13,0.6)', colors.bg]} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+        <View style={styles.topBar}>
+          <Text style={styles.brand}>CLASH<Text style={{ color: colors.gold }}>GH</Text></Text>
           <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
-          <Pressable onPress={() => navigation.navigate('Wallet')} hitSlop={8} style={[styles.avatar, { width: undefined, paddingHorizontal: spacing.md }]}>
-            <Text style={{ color: colors.textMuted, fontSize: typography.caption, fontWeight: fontWeights.semibold }}>₵ Wallet</Text>
-          </Pressable>
-          <Pressable onPress={() => navigation.navigate('Inbox')} hitSlop={8} style={styles.avatar} accessibilityLabel="Notifications">
-            <Text style={{ color: colors.textMuted, fontSize: typography.caption }}>🔔</Text>
-          </Pressable>
-          <Pressable onPress={() => navigation.navigate('Me')} hitSlop={8} style={styles.avatar}>
-            <Text style={{ color: colors.gold, fontWeight: fontWeights.bold }}>
-              {(profile?.username ?? '?').slice(0, 1).toUpperCase()}
-            </Text>
-          </Pressable>
+            <Pressable onPress={() => navigation.navigate('Wallet')} hitSlop={8} style={[styles.iconBtn, { width: undefined, paddingHorizontal: spacing.md }]}>
+              <Text style={{ color: colors.gold, fontSize: typography.caption, fontWeight: fontWeights.bold }}>₵ Wallet</Text>
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('Inbox')} hitSlop={8} style={styles.iconBtn} accessibilityLabel="Notifications">
+              <Text style={{ fontSize: 15 }}>🔔</Text>
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('Me')} hitSlop={8} style={[styles.iconBtn, { borderColor: colors.gold }]}>
+              <Text style={{ color: colors.gold, fontWeight: fontWeights.black }}>{(profile?.username ?? '?').slice(0, 1).toUpperCase()}</Text>
+            </Pressable>
           </View>
         </View>
-        <Text style={styles.updated}>
-          {updatedAt ? `Last updated ${updatedAt.toLocaleTimeString()}` : 'Loading…'}
-        </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingVertical: spacing.sm }}>
+        <FadeIn style={styles.heroCopy}>
+          <Eyebrow color={colors.cyan}>Ghana's mobile esports arena</Eyebrow>
+          <Text style={styles.heroTitle}>Play. Win.{'\n'}<Text style={{ color: colors.gold }}>Get paid on MoMo.</Text></Text>
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm }}>
+            {liveCount > 0 ? <View style={styles.statPill}><LiveDot size={6} /><Text style={styles.statText}>{liveCount} live</Text></View> : null}
+            <View style={styles.statPill}><Text style={[styles.statText, { color: colors.green }]}>{openCount} open</Text></View>
+            <View style={styles.statPill}><Text style={styles.statText}>{updatedAt ? `Updated ${updatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Loading…'}</Text></View>
+          </View>
+        </FadeIn>
+      </ImageBackground>
+
+      <View style={{ paddingHorizontal: spacing.xl }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm, paddingVertical: spacing.md }}>
           {FILTERS.map((f) => (
-            <FilterChip key={f.key} label={f.label} active={game === f.key} onPress={() => onFilter(f.key)} />
+            <FilterChip key={f.key} label={f.label} active={game === f.key} accent={f.key === 'all' ? colors.gold : GAMES[f.key].accent} onPress={() => onFilter(f.key)} />
           ))}
         </ScrollView>
       </View>
@@ -229,7 +246,18 @@ export function HomeScreen({ navigation }: Props) {
         }
         ListEmptyComponent={
           loading ? (
-            <Text style={styles.empty}>Loading tournaments…</Text>
+            <View style={{ gap: spacing.md }}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={[styles.card, { padding: 0 }]}>
+                  <Skeleton height={130} radius={0} />
+                  <View style={{ padding: spacing.lg, gap: spacing.sm }}>
+                    <Skeleton height={22} width="70%" />
+                    <Skeleton height={14} width="45%" />
+                    <Skeleton height={6} />
+                  </View>
+                </View>
+              ))}
+            </View>
           ) : (
             <Text style={styles.empty}>No tournaments in this list yet — check back soon.</Text>
           )
@@ -239,27 +267,22 @@ export function HomeScreen({ navigation }: Props) {
   );
 }
 
-function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+function FilterChip({ label, active, accent, onPress }: { label: string; active: boolean; accent: string; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
-        backgroundColor: active ? colors.gold : colors.surfaceAlt,
-        borderColor: active ? colors.gold : colors.border,
+        backgroundColor: active ? accent : colors.surface,
+        borderColor: active ? accent : colors.border,
         borderWidth: 1,
         borderRadius: radius.pill,
         paddingHorizontal: spacing.lg,
         paddingVertical: spacing.sm,
         opacity: pressed ? 0.8 : 1,
+        shadowColor: accent, shadowOpacity: active ? 0.5 : 0, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
       })}
     >
-      <Text
-        style={{
-          color: active ? '#14100A' : colors.textMuted,
-          fontSize: typography.caption,
-          fontWeight: fontWeights.semibold,
-        }}
-      >
+      <Text style={{ color: active ? '#0A0C10' : colors.textMuted, fontSize: typography.caption, fontWeight: fontWeights.bold, letterSpacing: 0.4 }}>
         {label}
       </Text>
     </Pressable>
@@ -267,51 +290,35 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
 }
 
 const styles = StyleSheet.create({
-  header: {
-    color: colors.text,
-    fontSize: typography.title,
-    fontWeight: fontWeights.bold,
+  hero: { height: 260, justifyContent: 'space-between' },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.xl, paddingBottom: 0 },
+  brand: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.black, letterSpacing: 3 },
+  iconBtn: {
+    width: 36, height: 36, borderRadius: radius.pill,
+    backgroundColor: 'rgba(17,23,33,0.75)', borderWidth: 1, borderColor: colors.borderBright,
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  updated: {
-    color: colors.textFaint,
-    fontSize: typography.tiny,
-    marginTop: spacing.xs,
-  },
+  heroCopy: { padding: spacing.xl, gap: spacing.xs },
+  heroTitle: { color: colors.text, fontSize: typography.display, lineHeight: 38, fontWeight: fontWeights.black, letterSpacing: -0.5 },
+  statPill: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(17,23,33,0.8)', borderColor: colors.border, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 4 },
+  statText: { color: colors.textMuted, fontSize: typography.tiny, fontWeight: fontWeights.semibold },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderWidth: 1,
     borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    overflow: 'hidden',
   },
-  title: {
-    color: colors.text,
-    fontSize: typography.subheading,
-    fontWeight: fontWeights.semibold,
-  },
-  meta: {
-    color: colors.textMuted,
-    fontSize: typography.caption,
-  },
-  meta2: {
-    color: colors.textFaint,
-    fontSize: typography.tiny,
-  },
-  empty: {
-    color: colors.textMuted,
-    fontSize: typography.body,
-    textAlign: 'center',
-    marginTop: spacing.xxl,
-  },
+  cardArt: { height: 150, justifyContent: 'space-between' },
+  cardArtTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md },
+  gamePill: { borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3, backgroundColor: 'rgba(7,9,13,0.6)' },
+  livePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,63,94,0.18)', borderRadius: radius.pill, paddingRight: spacing.md, paddingLeft: 2 },
+  liveText: { color: colors.red, fontSize: typography.tiny, fontWeight: fontWeights.black, letterSpacing: 1 },
+  title: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 8 },
+  prize: { color: colors.gold, fontSize: 24, fontWeight: fontWeights.black, letterSpacing: -0.5 },
+  entry: { color: colors.text, fontSize: typography.subheading, fontWeight: fontWeights.bold },
+  track: { height: 6, borderRadius: 3, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: 3 },
+  meta: { color: colors.textMuted, fontSize: typography.tiny, fontWeight: fontWeights.medium },
+  empty: { color: colors.textMuted, fontSize: typography.body, textAlign: 'center', marginTop: spacing.xxl },
 });

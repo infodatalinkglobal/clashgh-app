@@ -1,10 +1,11 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import { useAuth } from '../store/AuthContext';
-import { Badge, Button, Screen } from '../components/ui';
+import { Badge, Button, Eyebrow, FadeIn, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import { providerLabel, toLocalDisplay } from '../utils/phone';
 
@@ -17,13 +18,23 @@ export function MeScreen() {
   return (
     <Screen>
       <Button label="‹ Back" variant="ghost" onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', minHeight: 36, paddingVertical: spacing.xs }} />
-      <Text style={{ color: colors.text, fontSize: typography.title, fontWeight: fontWeights.bold }}>Account</Text>
+      <Text style={{ color: colors.text, fontSize: typography.title, fontWeight: fontWeights.black, letterSpacing: -0.5 }}>Account</Text>
 
-      <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.md }}>
-        <Text style={{ color: colors.text, fontSize: typography.subheading, fontWeight: fontWeights.semibold }}>
-          {profile.username ?? '(no username)'}
-        </Text>
-        <Text style={{ color: colors.textMuted, fontSize: typography.caption }}>{profile.email}</Text>
+      <FadeIn>
+      <View style={{ backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.borderBright, padding: spacing.xl, gap: spacing.md, overflow: 'hidden' }}>
+        <LinearGradient colors={['rgba(255,198,26,0.16)', 'rgba(7,9,13,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+          <View style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: colors.gold, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', shadowColor: colors.gold, shadowOpacity: 0.5, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } }}>
+            <Text style={{ color: colors.gold, fontSize: 24, fontWeight: fontWeights.black }}>{(profile.username ?? '?').slice(0, 1).toUpperCase()}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Eyebrow color={colors.gold}>Player</Eyebrow>
+            <Text style={{ color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.black }}>
+              {profile.username ?? '(no username)'}
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: typography.caption }}>{profile.email}</Text>
+          </View>
+        </View>
         <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center', flexWrap: 'wrap' }}>
           {profile.phone_verified ? (
             <Badge label="Phone verified" tone="green" />
@@ -40,6 +51,7 @@ export function MeScreen() {
           </Text>
         ) : null}
       </View>
+      </FadeIn>
 
       <Text style={{ color: colors.textFaint, fontSize: typography.tiny }}>
         The same MoMo number pays your entry fees and receives your winnings.

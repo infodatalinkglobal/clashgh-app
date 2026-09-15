@@ -7,14 +7,14 @@
     "icon": "./assets/icon.png",
     "scheme": "clashgh",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0E1116",
+    "backgroundColor": "#07090D",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.clashgh.app",
       "adaptiveIcon": {
-        "backgroundColor": "#0E1116",
+        "backgroundColor": "#07090D",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -27,8 +27,8 @@
       "output": "single",
       "name": "ClashGH",
       "shortName": "ClashGH",
-      "themeColor": "#0E1116",
-      "backgroundColor": "#0E1116",
+      "themeColor": "#07090D",
+      "backgroundColor": "#07090D",
       "description": "Paid mobile-game tournaments in Ghana. Enter with MoMo, win real cash."
     },
     "plugins": [

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { endpoints, type MatchPlayerView, type MatchView } from '../services/api';
 import { Config } from '../config';
 import { useAuth } from '../store/AuthContext';
-import { Badge, Button, Screen } from '../components/ui';
+import { Badge, Button, Confetti, Eyebrow, FadeIn, LiveDot, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -108,16 +109,19 @@ export function MatchScreen({ navigation, route }: Props) {
               </View>
             </View>
 
-            {/* Versus card */}
-            <View style={styles.card}>
+            {/* Face-off */}
+            <FadeIn>
+            <View style={[styles.card, styles.faceoff]}>
+              <LinearGradient colors={['rgba(255,198,26,0.12)', 'rgba(7,9,13,0)', 'rgba(34,211,238,0.12)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
               <PlayerBlock p={participant ? me : m.player1} label={participant ? 'You' : 'Player 1'} highlight={participant} winner={m.winner_id} showUid={m.status !== 'pending' || participant} />
               <View style={styles.vsRow}>
                 <View style={styles.vsLine} />
-                <Text style={styles.vs}>VS</Text>
+                <View style={styles.vsBadge}><Text style={styles.vs}>VS</Text></View>
                 <View style={styles.vsLine} />
               </View>
-              <PlayerBlock p={participant ? opponent : m.player2} label={participant ? 'Opponent' : 'Player 2'} winner={m.winner_id} showUid={m.status !== 'pending'} />
+              <PlayerBlock p={participant ? opponent : m.player2} label={participant ? 'Opponent' : 'Player 2'} winner={m.winner_id} showUid={m.status !== 'pending'} accent={colors.cyan} />
             </View>
+            </FadeIn>
 
             {/* Stage-specific content */}
             {m.status === 'pending' ? (
@@ -137,9 +141,10 @@ export function MatchScreen({ navigation, route }: Props) {
 
             {m.status === 'active' || m.status === 'awaiting_results' ? (
               <>
-                <View style={[styles.card, { borderColor: colors.gold, alignItems: 'center' }]}>
-                  <Text style={styles.cardLabel}>Room code</Text>
-                  <Text style={styles.roomCode}>{m.room_code ?? '——————'}</Text>
+                <View style={[styles.card, styles.roomCard]}>
+                  <LinearGradient colors={['rgba(255,198,26,0.18)', 'rgba(255,198,26,0.02)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}><LiveDot size={6} color={colors.gold} /><Eyebrow color={colors.gold}>Room code</Eyebrow></View>
+                  <Text selectable style={styles.roomCode}>{m.room_code ?? '——————'}</Text>
                   <Text style={styles.meta2}>Both players enter this code in the game to meet in the same room.</Text>
                 </View>
 
@@ -184,11 +189,12 @@ export function MatchScreen({ navigation, route }: Props) {
               </View>
             ) : null}
 
+            {m.status === 'completed' && iWon ? <Confetti /> : null}
             {m.status === 'completed' ? (
               <View style={[styles.card, { borderColor: iWon ? colors.green : colors.border, alignItems: 'center' }]}>
                 {iWon ? (
                   <>
-                    <Text style={styles.big}>You won! 🎉</Text>
+                    <Text style={[styles.big, { color: colors.green }]}>You won! 🎉</Text>
                     <Text style={styles.meta}>
                       {m.tournament_status === 'completed' ? 'Champion — your payout is on its way to your MoMo.' : 'You advance to the next round. Check the bracket for your next opponent.'}
                     </Text>
@@ -213,14 +219,18 @@ export function MatchScreen({ navigation, route }: Props) {
   );
 }
 
-function PlayerBlock({ p, label, highlight = false, winner, showUid }: { p: MatchPlayerView | null; label: string; highlight?: boolean; winner: string | null; showUid: boolean }) {
+function PlayerBlock({ p, label, highlight = false, winner, showUid, accent = colors.gold }: { p: MatchPlayerView | null; label: string; highlight?: boolean; winner: string | null; showUid: boolean; accent?: string }) {
   const won = !!p && winner === p.user_id;
   return (
-    <View style={{ gap: 2 }}>
-      <Text style={styles.cardLabel}>{label}</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+      <View style={[styles.avatar, { borderColor: accent, shadowColor: accent }]}>
+        <Text style={{ color: accent, fontSize: typography.heading, fontWeight: fontWeights.black }}>{(p?.username ?? '?').slice(0, 1).toUpperCase()}</Text>
+      </View>
+    <View style={{ gap: 2, flex: 1 }}>
+      <Eyebrow color={accent}>{label}</Eyebrow>
       {p ? (
         <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' }}>
             <Text style={[styles.name, highlight && { color: colors.gold }]}>{p.username}</Text>
             {p.seed ? <Badge label={`Seed ${p.seed}`} /> : null}
             {won ? <Badge label="Winner" tone="green" /> : null}
@@ -235,6 +245,7 @@ function PlayerBlock({ p, label, highlight = false, winner, showUid }: { p: Matc
       ) : (
         <Text style={[styles.name, { color: colors.textFaint }]}>TBD</Text>
       )}
+    </View>
     </View>
   );
 }
@@ -283,7 +294,11 @@ function countdown(ms: number): string {
 }
 
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold },
+  title: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.black, letterSpacing: -0.3 },
+  faceoff: { overflow: 'hidden', gap: spacing.md, borderColor: colors.borderBright },
+  roomCard: { borderColor: colors.gold, alignItems: 'center', overflow: 'hidden', shadowColor: colors.gold, shadowOpacity: 0.35, shadowRadius: 24, shadowOffset: { width: 0, height: 0 } },
+  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 2, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center', shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
+  vsBadge: { borderWidth: 1, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 2, backgroundColor: colors.bg },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -293,13 +308,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   cardLabel: { color: colors.textMuted, fontSize: typography.tiny, letterSpacing: 1, textTransform: 'uppercase' },
-  name: { color: colors.text, fontSize: typography.subheading, fontWeight: fontWeights.semibold },
+  name: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold },
   uid: { color: colors.textMuted, fontSize: typography.caption },
   big: { color: colors.gold, fontSize: typography.title, fontWeight: fontWeights.bold },
-  roomCode: { color: colors.text, fontSize: 40, fontWeight: fontWeights.bold, letterSpacing: 8, fontVariant: ['tabular-nums'] },
+  roomCode: { color: colors.gold, fontSize: 44, fontWeight: fontWeights.black, letterSpacing: 10, fontVariant: ['tabular-nums'], textShadowColor: colors.goldGlow, textShadowRadius: 18 },
   meta: { color: colors.textMuted, fontSize: typography.caption },
   meta2: { color: colors.textFaint, fontSize: typography.tiny },
   vsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginVertical: spacing.xs },
   vsLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  vs: { color: colors.textFaint, fontSize: typography.tiny, fontWeight: fontWeights.bold, letterSpacing: 2 },
+  vs: { color: colors.textMuted, fontSize: typography.tiny, fontWeight: fontWeights.black, letterSpacing: 2 },
 });

@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { endpoints, pesewasToGhs, type TransactionRow, type WalletTotals } from '../services/api';
 import { useAuth } from '../store/AuthContext';
-import { Badge, Button, Screen } from '../components/ui';
+import { Badge, Button, Eyebrow, FadeIn, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import { providerLabel, toLocalDisplay } from '../utils/phone';
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -78,8 +79,10 @@ export function WalletScreen({ navigation }: Props) {
               <Text style={styles.meta2}>{updatedAt ? `Last updated ${updatedAt.toLocaleTimeString()}` : 'Loading…'}</Text>
             </View>
 
+            <FadeIn>
             <View style={styles.hero}>
-              <Text style={styles.cardLabel}>Net winnings</Text>
+              <LinearGradient colors={['rgba(34,197,94,0.18)', 'rgba(34,211,238,0.06)', 'rgba(7,9,13,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+              <Eyebrow color={colors.green}>Net winnings</Eyebrow>
               <Text style={[styles.big, { color: net >= 0 ? colors.green : colors.text }]}>
                 {net < 0 ? '−' : ''}{pesewasToGhs(Math.abs(net))}
               </Text>
@@ -97,6 +100,7 @@ export function WalletScreen({ navigation }: Props) {
                 {profile?.momo_provider ? ` (${providerLabel(profile.momo_provider)})` : ''}.
               </Text>
             </View>
+            </FadeIn>
 
             {error ? <Text style={{ color: colors.red, fontSize: typography.caption }}>{error}</Text> : null}
             <Text style={styles.section}>History</Text>
@@ -147,11 +151,11 @@ function Stat({ label, value, color = colors.text }: { label: string; value: str
 }
 
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.bold },
+  title: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.black, letterSpacing: -0.5 },
   section: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.semibold },
-  hero: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm },
+  hero: { backgroundColor: colors.surface, borderColor: 'rgba(34,197,94,0.35)', borderWidth: 1, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.sm, overflow: 'hidden' },
   cardLabel: { color: colors.textMuted, fontSize: typography.tiny, letterSpacing: 1, textTransform: 'uppercase' },
-  big: { fontSize: typography.title + 6, fontWeight: fontWeights.bold },
+  big: { fontSize: 40, fontWeight: fontWeights.black, letterSpacing: -1, fontVariant: ['tabular-nums'] },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, padding: spacing.md },
   dot: { width: 8, height: 8, borderRadius: 4 },
   rowTitle: { color: colors.text, fontSize: typography.caption, fontWeight: fontWeights.medium },

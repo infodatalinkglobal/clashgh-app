@@ -3,7 +3,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { endpoints, type NotificationRow } from '../services/api';
-import { Screen } from '../components/ui';
+import { FadeIn, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -68,9 +68,10 @@ export function InboxScreen({ navigation }: Props) {
             </View>
           )
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           const linked = Boolean((item.payload as { match_id?: string; tournament_id?: string }).match_id || (item.payload as { tournament_id?: string }).tournament_id);
           return (
+            <FadeIn delay={Math.min(index, 8) * 50}>
             <Pressable onPress={() => open(item)} disabled={!linked} style={({ pressed }) => [styles.card, pressed && linked && { opacity: 0.8 }]}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
                 <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
@@ -79,6 +80,7 @@ export function InboxScreen({ navigation }: Props) {
               {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
               {linked ? <Text style={styles.link}>Open →</Text> : null}
             </Pressable>
+            </FadeIn>
           );
         }}
       />
@@ -87,8 +89,8 @@ export function InboxScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  h1: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.bold, marginBottom: spacing.md },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: colors.border },
+  h1: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.black, letterSpacing: -0.5, marginBottom: spacing.md },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: colors.gold },
   title: { flex: 1, color: colors.text, fontSize: typography.body, fontWeight: fontWeights.semibold },
   time: { color: colors.textFaint, fontSize: typography.tiny },
   body: { color: colors.textMuted, fontSize: typography.caption, lineHeight: 18 },

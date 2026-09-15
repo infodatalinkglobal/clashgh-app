@@ -50,10 +50,13 @@ export function Bracket({
         const slotH = (MATCH_H + SLOT_GAP) * 2 ** (round - 1);
         return (
           <View key={round} style={{ width: MATCH_W + spacing.lg }}>
-            <Text style={styles.roundLabel}>{ROUND_LABEL(round, totalRounds)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm }}>
+              <View style={{ width: 3, height: 10, borderRadius: 2, backgroundColor: round === totalRounds ? colors.gold : colors.cyan }} />
+              <Text style={styles.roundLabel}>{ROUND_LABEL(round, totalRounds)}</Text>
+            </View>
             {matches.map((m) => (
               <View key={m.id} style={{ height: slotH, justifyContent: 'center' }}>
-                <MatchCard match={m} meId={meId} onPress={onPressMatch} />
+                <MatchCard match={m} meId={meId} onPress={onPressMatch} isFinal={round === totalRounds} />
               </View>
             ))}
           </View>
@@ -67,20 +70,28 @@ function MatchCard({
   match,
   meId,
   onPress,
+  isFinal,
 }: {
   match: BracketMatch;
   meId: string | null;
   onPress?: (m: BracketMatch) => void;
+  isFinal: boolean;
 }) {
   const mine = !!meId && (match.player1?.id === meId || match.player2?.id === meId);
   const live = match.status === 'active' || match.status === 'awaiting_results';
-  const borderColor = live ? colors.gold : match.status === 'disputed' ? colors.red : mine ? colors.goldDim : colors.border;
+  const borderColor = live ? colors.gold : match.status === 'disputed' ? colors.red : mine ? colors.cyan : colors.border;
   return (
     <Pressable
       onPress={onPress && mine ? () => onPress(match) : undefined}
       disabled={!(onPress && mine)}
-      style={({ pressed }) => [styles.card, { borderColor, opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [
+        styles.card,
+        { borderColor, opacity: pressed ? 0.85 : 1 },
+        live && styles.liveGlow,
+        isFinal && { backgroundColor: colors.surfaceAlt },
+      ]}
     >
+      {live ? <View style={styles.liveBar} /> : null}
       <PlayerRow p={match.player1} winner={match.winner} meId={meId} />
       <View style={styles.divider} />
       <PlayerRow p={match.player2} winner={match.winner} meId={meId} />
@@ -106,7 +117,7 @@ function PlayerRow({ p, winner, meId }: { p: BracketPlayer | null; winner: strin
         numberOfLines={1}
         style={[
           styles.player,
-          me && { color: colors.gold },
+          me && { color: colors.cyan, fontWeight: fontWeights.semibold },
           won && { fontWeight: fontWeights.bold },
           lost && { color: colors.textFaint, textDecorationLine: 'line-through' },
         ]}
@@ -126,7 +137,6 @@ const styles = StyleSheet.create({
     fontWeight: fontWeights.semibold,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom: spacing.sm,
   },
   card: {
     width: MATCH_W,
@@ -134,12 +144,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderRadius: radius.md,
+    overflow: 'visible',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     justifyContent: 'center',
     gap: 4,
   },
   divider: { height: 1, backgroundColor: colors.border },
+  liveGlow: { shadowColor: colors.gold, shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
+  liveBar: { position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2, backgroundColor: colors.gold },
   player: { color: colors.text, fontSize: typography.caption, flexShrink: 1 },
   seed: {
     color: colors.textFaint,
