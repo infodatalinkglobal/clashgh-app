@@ -2,15 +2,22 @@ import { runNotificationsSweep, enqueueStartReminders } from '../services/notifi
 
 /** Notifications outbox dispatcher (Module 3E) — every 20s. */
 let timer = null;
+let running = false; // skip a tick if the previous one is still going
 
 export function startNotificationsSweeper() {
   if (timer) return;
   const run = async () => {
+    if (running) return;
+    running = true;
     try {
-      await enqueueStartReminders();
-      await runNotificationsSweep();
-    } catch (err) {
-      console.error('[notify] sweep error:', err.message);
+      try {
+        await enqueueStartReminders();
+        await runNotificationsSweep();
+      } catch (err) {
+        console.error('[notify] sweep error:', err.message);
+      }
+    } finally {
+      running = false;
     }
   };
   timer = setInterval(run, 20_000);

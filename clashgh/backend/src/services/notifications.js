@@ -206,8 +206,8 @@ export const TEMPLATES = {
   admin_payout_failed: (u, p) => ({
     push: null,
     email: {
-      subject: `[ClashGH] PAYOUT FAILED after retries — ${cedis(p.amount_pesewas)} to ${p.username}`,
-      text: `Transaction ${p.tx_id} (${p.tournament_title}) failed ${p.attempts} times.\nPhone: ${p.phone}\n\nCheck the Paystack dashboard, then use "Re-run payout" in the admin panel.`,
+      subject: `[ClashGH] ${(p.tx_type ?? 'payout').toUpperCase()} FAILED — ${cedis(p.amount_pesewas)} to ${p.username}`,
+      text: `Transaction ${p.tx_id} (${p.tournament_title}) — ${p.tx_type === 'refund' ? 'refund transfer failed (refunds are not auto-retried)' : `failed after ${p.attempts} attempt(s)`}.\nPhone: ${p.phone}\n\nCheck the Paystack dashboard, then use "Re-run payout" / resolve the refund in the admin panel.`,
     },
   }),
 };
@@ -338,7 +338,7 @@ export async function enqueueStartReminders() {
               jsonb_build_object('tournament_title', t.title, 'tournament_id', t.id, 'minutes', $1::int, 'starts_at', t.starts_at)
        FROM public.tournaments t
        JOIN public.registrations r ON r.tournament_id = t.id AND r.payment_status = 'paid'
-       WHERE t.status IN ('open', 'full')
+       WHERE t.status = 'full'  -- a lobby that never filled has nothing to remind about
          AND t.starts_at BETWEEN now() AND now() + make_interval(mins => $1)
          AND NOT EXISTS (
            SELECT 1 FROM public.notifications n

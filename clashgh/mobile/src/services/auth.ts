@@ -131,8 +131,8 @@ class AuthService {
       { method: 'POST', body: { email } },
     );
     await this.saveToken(data.token);
-    await this.bootstrap();
-    const { profile } = await endpoints.me();
+    const profile = await this.bootstrap(); // wires the token provider + loads /me once
+    if (!profile) throw new ApiError(401, 'Sign-in succeeded but the session could not be loaded — try again');
     return profile;
   }
 

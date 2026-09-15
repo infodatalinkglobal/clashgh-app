@@ -10,21 +10,28 @@ import { generateMissingBrackets } from '../services/bracket.js';
  */
 
 let timer = null;
+let running = false; // skip a tick if the previous one is still going
 
 export function startBracketGenSweeper() {
   if (timer) return;
   const run = async () => {
+    if (running) return;
+    running = true;
     try {
-      const results = await generateMissingBrackets();
-      for (const r of results) {
-        if (r.generated) {
-          console.log(`[sweeper] generated missing bracket for ${r.tournament_id} (${r.players} players)`);
-        } else if (r.reason) {
-          console.log(`[sweeper] bracket sweep: ${r.tournament_id} skipped (${r.reason})`);
+      try {
+        const results = await generateMissingBrackets();
+        for (const r of results) {
+          if (r.generated) {
+            console.log(`[sweeper] generated missing bracket for ${r.tournament_id} (${r.players} players)`);
+          } else if (r.reason) {
+            console.log(`[sweeper] bracket sweep: ${r.tournament_id} skipped (${r.reason})`);
+          }
         }
+      } catch (err) {
+        console.error('[sweeper] bracket-gen error:', err.message);
       }
-    } catch (err) {
-      console.error('[sweeper] bracket-gen error:', err.message);
+    } finally {
+      running = false;
     }
   };
   timer = setInterval(run, 60_000);

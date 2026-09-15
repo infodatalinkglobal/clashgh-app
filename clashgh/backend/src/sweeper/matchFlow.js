@@ -10,6 +10,7 @@ import { activateDueMatches, enforceDeadlines, progressTournaments, runMoneyInva
  */
 
 let timer = null;
+let running = false; // skip a tick if the previous one is still going
 let sweeps = 0;
 
 export async function runMatchFlowSweep() {
@@ -41,8 +42,14 @@ export async function runMatchFlowSweep() {
 
 export function startMatchFlowSweeper() {
   if (timer) return;
-  const run = () => {
-    void runMatchFlowSweep();
+  const run = async () => {
+    if (running) return;
+    running = true;
+    try {
+      await runMatchFlowSweep();
+    } finally {
+      running = false;
+    }
   };
   timer = setInterval(run, 60_000);
   timer.unref();

@@ -1,6 +1,6 @@
 import { pool } from '../db/pool.js';
 import { env } from '../config/env.js';
-import { initiateTransferForTx, notifyPayoutFailed, MAX_PAYOUT_RETRIES } from '../services/payment.js';
+import { initiateTransferForTx, claimForRetry, releaseFailedClaim, notifyPayoutFailed, MAX_PAYOUT_RETRIES } from '../services/payment.js';
 
 /**
  * Payout retry sweeper (runs ~every 60s) — agent.md §9 step 6.
@@ -16,6 +16,7 @@ import { initiateTransferForTx, notifyPayoutFailed, MAX_PAYOUT_RETRIES } from '.
  */
 
 let timer = null;
+let running = false; // skip a tick if the previous one is still going
 
 export async function runPayoutRetrySweep() {
   const { rows } = await pool.query(
@@ -29,48 +30,35 @@ export async function runPayoutRetrySweep() {
   );
 
   const results = [];
-  for (const tx of rows) {
+  for (const candidate of rows) {
     if (env.paystackMode === 'stub') {
       // Stub transfers always succeed when retried.
       await pool.query(
-        `UPDATE public.transactions
-         SET status = 'success', attempts = attempts + 1, next_retry_at = NULL
-         WHERE id = $1`,
-        [tx.id],
+        `UPDATE public.transactions SET status = 'success', attempts = attempts + 1, next_retry_at = NULL
+         WHERE id = $1 AND status = 'failed'`,
+        [candidate.id],
       );
-      results.push({ tx: tx.id, retry: tx.attempts + 1, state: 'success' });
+      results.push({ tx: candidate.id, retry: candidate.attempts + 1, state: 'success' });
       continue;
     }
+    // Claim (failed → pending, attempts+1) BEFORE the HTTP call so no other
+    // worker / admin click can initiate the same transfer concurrently.
+    const tx = await claimForRetry(candidate.id);
+    if (!tx) continue;
     try {
       await initiateTransferForTx(tx);
-      await pool.query(
-        `UPDATE public.transactions
-         SET status = 'pending', attempts = attempts + 1, next_retry_at = NULL
-         WHERE id = $1`,
-        [tx.id],
-      );
-      results.push({ tx: tx.id, retry: tx.attempts + 1, state: 'pending' });
-      console.log(`[sweeper] payout ${tx.id} retry ${tx.attempts + 1}/${MAX_PAYOUT_RETRIES} initiated`);
+      results.push({ tx: tx.id, retry: tx.attempts, state: 'pending' });
+      console.log(`[sweeper] payout ${tx.id} retry ${tx.attempts}/${MAX_PAYOUT_RETRIES} initiated`);
     } catch (err) {
-      // Re-initiation itself failed (API down, etc.) — bump attempts so
-      // the backoff schedule advances; the webhook would have done the
-      // same if the transfer had failed after starting.
-      const attempts = tx.attempts + 1;
-      if (attempts >= MAX_PAYOUT_RETRIES) {
-        await pool.query(
-          `UPDATE public.transactions SET status = 'failed', attempts = $2, next_retry_at = NULL WHERE id = $1`,
-          [tx.id, attempts],
-        );
-        console.error(`[sweeper] payout ${tx.id} FINAL FAILURE after ${attempts} retries — admin attention required`);
-        await notifyPayoutFailed(pool, { ...tx, attempts });
-      } else {
-        const due = new Date(Date.now() + [15, 60, 360][Math.min(attempts, 2)] * 60_000);
-        await pool.query(
-          `UPDATE public.transactions SET attempts = $2, next_retry_at = $3 WHERE id = $1`,
-          [tx.id, attempts, due],
-        );
+      // Initiation itself failed (API down, etc.): back to 'failed' with the
+      // next backoff slot, or FINAL FAILURE once attempts are exhausted.
+      const final = tx.attempts >= MAX_PAYOUT_RETRIES;
+      await releaseFailedClaim(tx, { final });
+      if (final) {
+        console.error(`[sweeper] payout ${tx.id} FINAL FAILURE after ${tx.attempts} attempts — admin attention required`);
+        await notifyPayoutFailed(pool, tx);
       }
-      results.push({ tx: tx.id, retry: attempts, state: 'initiation_failed', error: err.message });
+      results.push({ tx: tx.id, retry: tx.attempts, state: 'initiation_failed', error: err.message });
     }
   }
   return results;
@@ -79,10 +67,16 @@ export async function runPayoutRetrySweep() {
 export function startPayoutRetrySweeper() {
   if (timer) return;
   const run = async () => {
+    if (running) return;
+    running = true;
     try {
-      await runPayoutRetrySweep();
-    } catch (err) {
-      console.error('[sweeper] payout-retry error:', err.message);
+      try {
+        await runPayoutRetrySweep();
+      } catch (err) {
+        console.error('[sweeper] payout-retry error:', err.message);
+      }
+    } finally {
+      running = false;
     }
   };
   timer = setInterval(run, 60_000);

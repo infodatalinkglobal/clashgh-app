@@ -184,7 +184,33 @@ function backoffDueDate(attempts) {
   return new Date(Date.now() + RETRY_BACKOFF_MINUTES[idx] * 60_000);
 }
 
-/** Create recipient + initiate the transfer for a pending tx row. */
+/**
+ * Atomically claim a FAILED payout/refund row for re-initiation: flips it
+ * to 'pending' and bumps attempts in one statement, so two workers (the
+ * 60s sweeper + an admin click, or two API instances) can never both
+ * initiate a transfer for the same row. Returns the row or null if someone
+ * else got there first.
+ */
+export async function claimForRetry(txId) {
+  const { rows: [row] } = await pool.query(
+    `UPDATE public.transactions
+     SET status = 'pending', attempts = attempts + 1, next_retry_at = NULL
+     WHERE id = $1 AND status = 'failed'
+     RETURNING id, user_id, amount_pesewas, attempts, tournament_id, type, description`,
+    [txId],
+  );
+  return row ?? null;
+}
+
+/** Undo a claim when initiation itself failed (API down etc.). */
+export async function releaseFailedClaim(tx, { final }) {
+  await pool.query(
+    `UPDATE public.transactions SET status = 'failed', next_retry_at = $2 WHERE id = $1 AND status = 'pending'`,
+    [tx.id, final ? null : backoffDueDate(tx.attempts)],
+  );
+}
+
+/** Create recipient + initiate the transfer for a PENDING tx row. */
 export async function initiateTransferForTx(tx) {
   const { rows: [user] } = await pool.query(
     'SELECT username, email, phone, momo_provider FROM public.users WHERE id = $1',
@@ -253,8 +279,9 @@ export async function updateTransferStatus(transferCode, newStatus) {
     `UPDATE public.transactions SET status = $2, next_retry_at = $3 WHERE id = $1`,
     [tx.id, 'failed', nextRetryAt],
   );
-  if (finalFailure) {
-    console.error(`[payment] PAYOUT ${tx.id} FINAL FAILURE after ${tx.attempts} retries — admin attention required`);
+  if (finalFailure || tx.type === 'refund') {
+    // Refunds are never auto-retried (agent.md §9) → every failure needs a human.
+    console.error(`[payment] ${tx.type.toUpperCase()} ${tx.id} ${finalFailure ? 'FINAL FAILURE' : 'FAILED'} — admin attention required`);
     await notifyPayoutFailed(pool, tx);
   }
   return { applied: true, tx: tx.id, final_failure: finalFailure, next_retry_at: nextRetryAt };
@@ -349,7 +376,7 @@ export async function executePayout(tournamentId, { force = false } = {}) {
       for (const ex of existing) {
         if (ex.status !== 'failed') continue;
         if (isLive) {
-          toTransfer.push({ id: ex.id, user_id: ex.user_id, amount_pesewas: ex.amount_pesewas, isRetry: true });
+          toTransfer.push({ id: ex.id, isRetry: true }); // claimed after COMMIT (see below)
         } else {
           await client.query(
             `UPDATE public.transactions SET status = 'success', attempts = attempts + 1, next_retry_at = NULL WHERE id = $1`,
@@ -368,20 +395,24 @@ export async function executePayout(tournamentId, { force = false } = {}) {
     }
 
     const transfers = [];
-    for (const tx of toTransfer) {
+    for (const item of toTransfer) {
+      // Retries must be CLAIMED (failed → pending, attempts+1) before the
+      // HTTP call so no other worker can initiate the same row.
+      const tx = item.isRetry ? await claimForRetry(item.id) : item;
+      if (!tx) {
+        transfers.push({ tx: item.id, state: 'skipped', reason: 'already being retried elsewhere' });
+        continue;
+      }
       try {
         const r = await initiateTransferForTx(tx);
-        if (tx.isRetry) {
-          // Back to in-flight so the transfer webhook can find the row,
-          // and consume one of the 3 allowed attempts.
-          await pool.query(
-            `UPDATE public.transactions SET status = 'pending', attempts = attempts + 1 WHERE id = $1`,
-            [tx.id],
-          );
-        }
         transfers.push({ ...r, state: 'initiated' });
       } catch (err) {
         console.error(`[payment] payout transfer for tx ${tx.id} failed to initiate:`, err.message);
+        if (item.isRetry) {
+          const final = tx.attempts >= MAX_PAYOUT_RETRIES;
+          await releaseFailedClaim(tx, { final });
+          if (final) await notifyPayoutFailed(pool, tx);
+        }
         transfers.push({ tx: tx.id, state: 'initiation_failed', error: err.message });
       }
     }
@@ -415,6 +446,7 @@ export async function notifyMoneySent(q, tx) {
 }
 
 export async function notifyPayoutFailed(q, tx) {
+  // Used for payouts (after final retry) and refunds (first failure).
   const { rows: [ctx] } = await q.query(
     `SELECT u.username, u.phone, t.title FROM public.users u
      LEFT JOIN public.tournaments t ON t.id = $2 WHERE u.id = $1`,
@@ -423,6 +455,6 @@ export async function notifyPayoutFailed(q, tx) {
   await notify(q, {
     userId: null,
     template: 'admin_payout_failed',
-    payload: { tx_id: tx.id, amount_pesewas: tx.amount_pesewas, username: ctx?.username, phone: ctx?.phone, tournament_title: ctx?.title, attempts: tx.attempts },
+    payload: { tx_id: tx.id, tx_type: tx.type ?? 'payout', amount_pesewas: tx.amount_pesewas, username: ctx?.username, phone: ctx?.phone, tournament_title: ctx?.title, attempts: tx.attempts ?? 0 },
   });
 }

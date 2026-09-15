@@ -11,22 +11,29 @@ import { env } from '../config/env.js';
  */
 
 let timer = null;
+let running = false; // skip a tick if the previous one is still going
 
 export function startPendingTtlSweeper() {
   if (timer) return;
   const run = async () => {
+    if (running) return;
+    running = true;
     try {
-      const { rowCount } = await pool.query(
-        `DELETE FROM public.registrations
-         WHERE payment_status = 'pending'
-           AND created_at <= now() - make_interval(mins => $1)`,
-        [env.registrationPendingTtlMinutes],
-      );
-      if (rowCount > 0) {
-        console.log(`[sweeper] released ${rowCount} expired pending registration(s)`);
+      try {
+        const { rowCount } = await pool.query(
+          `DELETE FROM public.registrations
+           WHERE payment_status = 'pending'
+             AND created_at <= now() - make_interval(mins => $1)`,
+          [env.registrationPendingTtlMinutes],
+        );
+        if (rowCount > 0) {
+          console.log(`[sweeper] released ${rowCount} expired pending registration(s)`);
+        }
+      } catch (err) {
+        console.error('[sweeper] pending-ttl error:', err.message);
       }
-    } catch (err) {
-      console.error('[sweeper] pending-ttl error:', err.message);
+    } finally {
+      running = false;
     }
   };
   timer = setInterval(run, 60_000);

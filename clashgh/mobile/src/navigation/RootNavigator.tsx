@@ -14,6 +14,7 @@ import { WalletScreen } from '../screens/WalletScreen';
 import { MeScreen } from '../screens/MeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { SignInScreen } from '../screens/SignInScreen';
+import { BannedScreen } from '../screens/BannedScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -68,6 +69,7 @@ export function RootNavigator() {
 
   if (initializing) return <Splash />;
   if (!profile) return <SignInScreen />;
+  if (profile.is_banned) return <BannedScreen />;
   if (isOnboarding) return <OnboardingScreen />;
 
   return (

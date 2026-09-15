@@ -342,3 +342,26 @@ CLOUDINARY_CLOUD_NAME=demo CLOUDINARY_API_KEY=key CLOUDINARY_API_SECRET=secret n
 - [x] Wrong `CLOUDINARY_API_SECRET` → startup `MISCONFIGURED` warning; upload rejected by the mock's signature check ("Invalid Signature … String to sign …"), player gets 502 retry message
 - [x] Purge: 0 deleted at 90d; after back-dating, `?days=5` → clamped to 30, 2 deleted; audit row written
 - [x] Purge on `local` storage → 409
+
+## Code review pass (post-3D) — fixes applied
+
+Ranked findings from a full read of the money/state paths, with the fix:
+
+1. **Double payout on live retries (critical).** Sweeper and admin
+   `force` re-payout both initiated Paystack transfers for a `failed` row
+   without first claiming it → two workers could pay twice. Now
+   `claimForRetry()` atomically flips `failed → pending, attempts+1`
+   before any HTTP call; losers skip. Verified: 10 concurrent claims → 1 winner.
+2. **Banned players could still play/collect (critical).** `is_banned` was
+   checked only on join. `requireAuth` now returns 403 for every call except
+   `GET /me`; the app shows a Banned screen. Verified: transactions/result → 403.
+3. **Failed refunds were silent.** Admin alert now fires for refund
+   `transfer.failed` too (refunds are never auto-retried).
+4. Start reminders fired for `open` lobbies that might never fill → `full` only.
+5. `X-ClashGH-Token` fallback limited to non-production.
+6. Every sweeper now has an in-flight guard (a slow tick no longer overlaps
+   the next); the match-flow guard previously did not await its work.
+7. Mobile sign-in loaded `/me` twice; duplicate import in `cancel.js`.
+
+Known, accepted: rate limiter is per-process (single Render instance);
+"max 3 retries" means up to 4 transfer attempts total (documented behaviour).

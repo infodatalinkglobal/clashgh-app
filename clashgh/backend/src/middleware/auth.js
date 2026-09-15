@@ -51,7 +51,7 @@ export async function requireAuth(req, res, next) {
     // Same JWT, same verification; only the transport differs.
     const header = req.headers.authorization || '';
     const [scheme, bearer] = header.split(' ');
-    const alt = req.headers['x-clashgh-token'];
+    const alt = env.nodeEnv !== 'production' ? req.headers['x-clashgh-token'] : undefined;
     const token = scheme === 'Bearer' && bearer ? bearer : typeof alt === 'string' && alt ? alt : null;
     if (!token) {
       throw new ApiError(401, 'Missing bearer token');
@@ -71,6 +71,12 @@ export async function requireAuth(req, res, next) {
     if (rows.length === 0) throw new ApiError(401, 'Account not found');
 
     req.user = rows[0];
+    // Banned accounts are read-only: they may load their own profile (so
+    // the app can explain) but nothing else — no joins, results, uploads,
+    // payouts to a banned number. Admin ban is a single, complete gate.
+    if (req.user.is_banned && !(req.method === 'GET' && req.path === '/me')) {
+      throw new ApiError(403, 'Your account is banned — contact support');
+    }
     next();
   } catch (err) {
     next(err);

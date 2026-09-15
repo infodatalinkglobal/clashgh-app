@@ -1,10 +1,9 @@
 import { pool } from '../db/pool.js';
 import { notify } from './notifications.js';
-import { notifyMoneySent } from './payment.js';
 import { env } from '../config/env.js';
 import { ApiError } from '../middleware/errorHandler.js';
 import { UUID_RE } from '../utils/validate.js';
-import { initiateRefundTransfer } from './payment.js';
+import { initiateRefundTransfer, notifyMoneySent } from './payment.js';
 
 /**
  * Tournament cancellation + full refund (Module 1C, extracted for 1F).
