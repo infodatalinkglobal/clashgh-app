@@ -86,6 +86,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Stable identity: screens use it inside useFocusEffect deps, so a new
+  // function per render would refetch → setProfile → re-render → refetch…
+  const refreshProfile = useCallback(async () => {
+    const p = await authService.refreshProfile();
+    setProfile(p);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       profile,
@@ -111,10 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const p = await authService.handleAuthUrl(url);
           setProfile(p);
         }),
-      refreshProfile: async () => {
-        const p = await authService.refreshProfile();
-        setProfile(p);
-      },
+      refreshProfile,
       setProfileUsername: async (username) => {
         await authService.setProfileUsername(username);
         const p = await authService.refreshProfile();
@@ -136,7 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }),
       dismissError: () => setError(null),
     }),
-    [profile, initializing, busy, error, run],
+    [profile, initializing, busy, error, run, refreshProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
