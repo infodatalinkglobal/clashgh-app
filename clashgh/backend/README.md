@@ -311,3 +311,34 @@ dispute_resolved ×2 → final → payout_sent (₵28 champion / ₵8 runner-up,
 ×8. Provider failure (bad Resend key) → row stays `pending`, `attempts=1`,
 `next_attempt_at` +1 min, error recorded. Onboarding: duplicate number → 409,
 second change → 409.
+
+## Module 3D — Screenshot storage (Cloudinary)
+
+`SCREENSHOT_STORAGE=local` (dev, `backend/uploads-dev`) or `cloudinary`.
+Uploads are **signed server-side** (`services/screenshots.js`, plain `fetch`,
+no SDK): the app posts base64 JPEG (≤500KB, already resized ≤1280px) to
+`POST /api/uploads/screenshot`; the API signs and forwards it. The API secret
+never reaches the device. Zero client change between the two modes.
+
+- public_id `clashgh/screenshots/<match8>/<user8>_<ts>_<rand>`, tags
+  `clashgh_screenshot`, `match_<id>`; `overwrite=false` (evidence can't be
+  replaced); incoming transformation `c_limit,w_1280,h_1280,q_auto:eco`
+- Startup ping: a bad key logs `CLOUDINARY MISCONFIGURED` immediately
+- Provider failure → 502 "try again" to the player, real cause in the log
+- Retention: `POST /api/admin/screenshots/purge?days=` deletes tagged images
+  older than `days` (default `SCREENSHOT_RETENTION_DAYS=90`, floor 30). Audited.
+
+### Testing the live path without an account
+`test/mock-cloudinary.js` verifies the signature exactly like Cloudinary
+(sha1 of sorted params + secret) and serves stored bytes back:
+```bash
+node test/mock-cloudinary.js &                       # :4011
+SCREENSHOT_STORAGE=cloudinary CLOUDINARY_API_URL=http://127.0.0.1:4011 \
+CLOUDINARY_CLOUD_NAME=demo CLOUDINARY_API_KEY=key CLOUDINARY_API_SECRET=secret npm run dev
+```
+
+### What was verified (3D test log)
+- [x] Upload through the cloudinary path → 201, `secure_url` under `clashgh/screenshots/<match>/…`; fetched bytes identical to the 41.5KB source
+- [x] Wrong `CLOUDINARY_API_SECRET` → startup `MISCONFIGURED` warning; upload rejected by the mock's signature check ("Invalid Signature … String to sign …"), player gets 502 retry message
+- [x] Purge: 0 deleted at 90d; after back-dating, `?days=5` → clamped to 30, 2 deleted; audit row written
+- [x] Purge on `local` storage → 409

@@ -5,6 +5,7 @@ import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import { UUID_RE } from '../utils/validate.js';
 import { cancelTournament } from '../services/cancel.js';
+import { purgeScreenshotsOlderThan } from '../services/screenshots.js';
 
 /**
  * Admin dashboard read models + player moderation (Modules 3B/3C/3F).
@@ -359,4 +360,20 @@ adminDashboardRouter.get('/admin/analytics', asyncHandler(async (req, res) => {
     },
     message: 'Analytics',
   });
+}));
+
+/**
+ * POST /api/admin/screenshots/purge?days=90 — Module 3D retention. Deletes
+ * Cloudinary screenshots older than `days` (default SCREENSHOT_RETENTION_DAYS).
+ * Only meaningful when SCREENSHOT_STORAGE=cloudinary. Audited.
+ */
+adminDashboardRouter.post('/admin/screenshots/purge', requireAuth, requireAdmin, asyncHandler(async (req, res) => {
+  if (env.screenshotStorage !== 'cloudinary') throw new ApiError(409, 'Screenshot storage is local — nothing to purge');
+  const days = Math.max(30, Number(req.query.days) || env.screenshotRetentionDays); // never below 30d (dispute window)
+  const deleted = await purgeScreenshotsOlderThan(days);
+  await pool.query(
+    `INSERT INTO public.admin_audit_log (admin_id, action, entity_type, entity_id, details) VALUES ($1, 'purge_screenshots', 'system', $2, $3)`,
+    [req.user.id, req.user.id, JSON.stringify({ days, deleted })],
+  );
+  res.json({ success: true, data: { days, deleted }, message: `Deleted ${deleted} screenshot(s) older than ${days} days` });
 }));

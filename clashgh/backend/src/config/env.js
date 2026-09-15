@@ -72,12 +72,21 @@ export const env = {
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || null,
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || null,
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || null,
+  cloudinaryApiUrl: (process.env.CLOUDINARY_API_URL || 'https://api.cloudinary.com').replace(/\/+$/, ''),
+  screenshotRetentionDays: Number(process.env.SCREENSHOT_RETENTION_DAYS) || 90,
   // Browser origins allowed in production (comma-separated; admin panel URL).
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
 
 if (env.mailProvider === 'resend' && !env.resendApiKey) {
   throw new Error('MAIL_PROVIDER=resend requires RESEND_API_KEY');
+}
+if (!['local', 'cloudinary'].includes(env.screenshotStorage)) {
+  throw new Error(`SCREENSHOT_STORAGE must be 'local' or 'cloudinary' (got '${env.screenshotStorage}')`);
+}
+if (env.screenshotStorage === 'cloudinary') {
+  const missing = ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'].filter((k) => !process.env[k]);
+  if (missing.length > 0) throw new Error(`SCREENSHOT_STORAGE=cloudinary requires: ${missing.join(', ')}`);
 }
 if (!['stub', 'live'].includes(env.paystackMode)) {
   throw new Error(`PAYSTACK_MODE must be 'stub' or 'live' (got '${env.paystackMode}')`);

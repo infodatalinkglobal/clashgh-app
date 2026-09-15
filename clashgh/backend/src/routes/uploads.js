@@ -40,12 +40,20 @@ uploadsRouter.post(
     if (!(buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff)) {
       throw new ApiError(400, 'Screenshot must be a JPEG image');
     }
-    const url = await storeScreenshot({
-      buffer: buf,
-      userId: req.user.id,
-      matchId: typeof req.body?.match_id === 'string' ? req.body.match_id : null,
-      publicBase: `${req.protocol}://${req.get('host')}`,
-    });
+    let url;
+    try {
+      url = await storeScreenshot({
+        buffer: buf,
+        userId: req.user.id,
+        matchId: typeof req.body?.match_id === 'string' ? req.body.match_id : null,
+        publicBase: `${req.protocol}://${req.get('host')}`,
+      });
+    } catch (err) {
+      // Storage provider trouble is ours, not the player's: log the real
+      // cause, tell them to retry (the pick + screenshot stay on-device).
+      console.error('[uploads] storage failed:', err.message);
+      throw new ApiError(502, 'Could not store the screenshot right now — please try again in a moment');
+    }
     res.status(201).json({ success: true, data: { url, bytes: buf.length }, message: 'Screenshot uploaded' });
   }),
 );

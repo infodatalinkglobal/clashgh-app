@@ -254,7 +254,7 @@ Build modules in this exact order. Do not skip ahead. Each module must be functi
 | 3A | Score Verification   | Opposing-pick confirmation logic, auto-advance on agreement          | ✅ (built in 1F) |
 | 3B | Dispute System       | Flag disputes, lock payouts, auto-flag high-dispute-rate players, admin resolution (award player OR cancel+refund) | ✅ |
 | 3C | Admin Dashboard      | Web panel: action queue, lobby health, tournaments, players, disputes, revenue, admin alerts       | ✅ |
-| 3D | Screenshot Storage   | Cloudinary upload integration, image compression, URL storage        | ⬜ |
+| 3D | Screenshot Storage   | Cloudinary signed server-side upload (no SDK), client compression ≤500KB, URL-only storage, startup health check, tag-based retention purge, local mock for tests | ✅ |
 | 3E | Notifications        | Email (Resend) + Expo push via transactional outbox: receipt, lobby full, 30/5-min start reminders, match start (room code), opponent submitted, result, disputes, payout/refund sent, admin alerts. MoMo number set without OTP (Paystack name-resolve + first charge proves ownership) — no SMS | ✅ |
 | 3F | Analytics            | Revenue, active players, popular games, payout volume, fill rate, time-to-fill, refund rate, no-show rate       | ✅ |
 
