@@ -1,0 +1,524 @@
+Markdown
+# agent.md — ClashGH Project Guide
+
+> **This file is the single source of truth for AI-assisted development on ClashGH.**
+> Read this file in full before generating any code. Follow every rule, convention, and constraint listed below.
+
+---
+
+## 1. Project Overview
+
+**ClashGH** is a mobile-first tournament escrow app built for the Ghana market. Players pay entry fees via Mobile Money (MoMo), get auto-matched into single-elimination brackets for popular mobile games, play using shared room codes, submit score screenshots, and winners receive automatic MoMo payouts.
+
+### Supported Games
+- eFootball
+- FC Mobile
+- Call of Duty: Mobile (CODM)
+- Dream League Soccer (DLS)
+
+### Core Flow
+Player signs up (phone + OTP)
+→ Browses tournaments
+→ Pays entry fee via MoMo (Paystack)
+→ Gets placed in bracket when lobby fills
+→ Receives room code + opponent UID
+→ Plays match on their game app
+→ Submits score screenshot
+→ Opponent confirms or disputes
+→ Winner advances / gets paid out via MoMo
+text
+
+---
+
+## 2. Tech Stack
+
+| Layer            | Technology                  | Notes                              |
+| ---------------- | --------------------------- | ---------------------------------- |
+| Backend          | Node.js + Express           | REST API                           |
+| Database         | PostgreSQL (Supabase)       | Hosted Postgres, use SQL directly  |
+| Payments         | Paystack API                | MoMo collect + MoMo transfer      |
+| Mobile App       | React Native (Expo)         | Android-first, target SDK 21+      |
+| Admin Panel      | React (Vite)                | Lightweight web dashboard          |
+| Image Storage    | Cloudinary                  | Score screenshots only             |
+| Authentication   | JWT                         | Access + refresh token pattern     |
+| Hosting          | Render                      | Backend + admin panel              |
+| Environment Vars | dotenv                      | All secrets, keys, URLs            |
+
+---
+
+## 3. Business Rules — NEVER VIOLATE THESE
+
+### Money & Currency
+- All monetary values are in **Ghana Cedis (GHS)**, symbol **₵**
+- Store all amounts as **integers in pesewas** (1 GHS = 100 pesewas) to avoid floating-point errors
+- Display amounts to users as GHS with 2 decimal places (e.g., ₵5.00)
+
+### Entry Fees & Escrow
+- Entry fees are collected **BEFORE** a player is placed into a bracket — no pay, no play
+- Collected fees are held in escrow (tracked in the `transactions` table, not a separate wallet)
+- **Prize pool** = total entry fees collected for that tournament **minus 10% platform fee**
+- Platform fee is calculated once at payout, not deducted from each individual entry
+
+### Payouts
+- Payouts are triggered **ONLY** when:
+  - **Both players** confirm the same result (winner/loser agree), **OR**
+  - An **admin manually resolves** a dispute
+- Never release escrow funds without a verified, confirmed result
+- Payouts are sent via **Paystack Transfer** to the winner's MoMo number
+
+### Brackets
+- **Single-elimination only** — no double elimination, no round-robin
+- Brackets are auto-generated when the tournament lobby reaches its player cap
+- Bracket sizes must be powers of 2: 4, 8, 16, 32, 64
+- If a lobby doesn't fill, the tournament does not start (and entry fees are refunded)
+
+### Match Mechanics
+- **Room codes**: 6-character alphanumeric random strings (uppercase, no ambiguous chars like 0/O, 1/I/L)
+- **UIDs**: Game-specific player IDs entered by each player during registration
+- Room code is revealed to both players only when the match is active
+- Each match has a **time window** to submit results (configurable per tournament, default 30 minutes)
+
+### Score Verification
+- Both players must submit a **screenshot** of the final score screen
+- Both players must **confirm or dispute** the result
+- If both confirm the same winner → auto-advance winner
+- If either player disputes → match is flagged for admin review
+- Screenshots are stored on Cloudinary and linked to the match record
+
+### Phone Numbers
+- Ghana phone format: `0XXXXXXXXX` (10 digits starting with 0)
+- Common prefixes: 024, 025, 026, 027, 028, 020, 050, 054, 055, 059
+- Store phone numbers in E.164 format internally: `+233XXXXXXXXX`
+- Display to users in local format: `0XXXXXXXXX`
+
+---
+
+## 4. Ghana Market Constraints — CRITICAL
+
+These constraints affect every technical decision. Do not ignore them.
+
+| Constraint                | Requirement                                                                 |
+| ------------------------- | --------------------------------------------------------------------------- |
+| **Android-first**         | 95% of users are on Android. iOS is not a launch priority.                  |
+| **Low-end devices**       | Must work on Tecno, Infinix, Itel phones with 2GB RAM, Android 8+          |
+| **Low data / 3G**         | Compress images before upload (max 500KB), minimize API payload sizes       |
+| **MoMo only**             | No card payments, no bank transfers. Paystack MoMo is the only method.     |
+| **Offline-friendly**      | Cache tournament lists, bracket state, and wallet balance locally           |
+| **App size**              | Final APK must be **under 15MB**. Avoid heavy dependencies.                |
+| **Simple UX**             | Many users are not tech-savvy. Minimal steps, clear labels, large buttons. |
+
+---
+
+## 5. Coding Conventions
+
+### Language & Syntax
+- **JavaScript only** — no TypeScript anywhere in the project
+- **ES Modules** — use `import` / `export` (not `require` / `module.exports`)
+- Set `"type": "module"` in all `package.json` files
+- **async/await** for all asynchronous code — never use raw callbacks or `.then()` chains
+- Use `const` by default, `let` only when reassignment is necessary, never `var`
+
+### Functions & Structure
+- Write **small, single-purpose functions** — one function does one thing
+- Name functions descriptively: `calculatePrizePool()`, `verifyPaystackWebhook()`, `generateRoomCode()`
+- Keep files under ~200 lines. If a file grows beyond that, split it.
+- Group related logic into modules/folders, not monolithic files
+
+### Error Handling
+- Wrap **every** async operation in `try/catch`
+- Never let unhandled promise rejections crash the server
+- Log errors with enough context to debug (include user ID, tournament ID, etc.)
+- Return user-friendly error messages — never expose stack traces or internal details to clients
+
+### Environment Variables
+- **Never hardcode** API keys, secrets, phone numbers, amounts, URLs, or credentials
+- Use `dotenv` and a `.env` file (which is `.gitignore`-d)
+- Provide a `.env.example` file with all required variable names (no values)
+- Access via `process.env.VARIABLE_NAME`
+
+### API Response Format
+Every API endpoint must return responses in this exact shape:
+
+```json
+{
+  "success": true,
+  "data": {},
+  "message": "Human-readable message"
+}
+•	success: true for 2xx responses, false for 4xx/5xx
+•	data: The response payload (object, array, or null)
+•	message: A short, clear string explaining what happened
+HTTP Status Codes
+Code	Usage
+200	Successful GET, PUT, PATCH, or general OK
+201	Successful resource creation (POST)
+400	Bad request / validation error
+401	Unauthorized / invalid or missing JWT
+403	Forbidden / insufficient permissions
+404	Resource not found
+409	Conflict (e.g., already registered)
+500	Internal server error
+Comments
+•	Comment complex business logic (escrow calculations, bracket generation, webhook verification)
+•	Don't comment obvious code
+•	Use // TODO: for known incomplete items
+•	Use // IMPORTANT: for business-critical logic that must not be changed carelessly
+Security
+•	Validate and sanitize all user input on the backend
+•	Validate Paystack webhook signatures on every webhook — reject unsigned requests
+•	Use parameterized queries (never concatenate SQL strings)
+•	Rate-limit auth endpoints (OTP requests, login attempts)
+•	JWTs should have reasonable expiry (access: 1 hour, refresh: 30 days)
+Database
+•	Use snake_case for all table and column names
+•	Always include created_at and updated_at timestamps on every table
+•	Use UUIDs for primary keys (generated by PostgreSQL gen_random_uuid())
+•	Use database-level constraints (NOT NULL, UNIQUE, CHECK, FOREIGN KEY) — don't rely solely on application-level validation
+•	Use ENUMs or CHECK constraints for status fields
+________________________________________
+6. Build Plan — 3 Parts, 18 Modules
+Build modules in this exact order. Do not skip ahead. Each module must be functional and testable before moving to the next.
+PART 1: BACKEND ENGINE
+#	Module	Description	Status
+1A	Database Schema	PostgreSQL schema: users, tournaments, registrations, matches, transactions	⬜
+1B	Auth API	Phone-based login, OTP generation/verification, JWT issue/refresh	⬜
+1C	Tournament API	Create, list, filter, join, manage tournaments	⬜
+1D	Bracket Engine	Auto-generate single-elimination brackets when a lobby fills	⬜
+1E	Paystack MoMo	Collect entry fees via MoMo, verify webhook signatures, track escrow	⬜
+1F	Match Flow	Room code generation, UID exchange, result submission, winner advancement	⬜
+PART 2: MOBILE APP (Player-Facing)
+#	Module	Description	Status
+2A	Auth Screens	Phone input, OTP input, username setup screens	⬜
+2B	Home & Lobby	Browse tournaments, filter by game, join button, entry fee display	⬜
+2C	Tournament View	Full bracket visualization, player position, prize pool, match schedule	⬜
+2D	Match Room	Opponent info, room code reveal, UID display, countdown timer, instructions	⬜
+2E	Score Submit	Screenshot capture/upload, score confirmation, dispute button	⬜
+2F	Wallet	Balance display, transaction history, payout status tracking	⬜
+PART 3: ADMIN & VERIFICATION
+#	Module	Description	Status
+3A	Score Verification	Opponent confirm/dispute logic, auto-advance on agreement	⬜
+3B	Dispute System	Flag disputes, lock payouts, admin resolution workflow	⬜
+3C	Admin Dashboard	Web panel: manage tournaments, players, disputes, view revenue	⬜
+3D	Screenshot Storage	Cloudinary upload integration, image compression, URL storage	⬜
+3E	Notifications	Push notifications + SMS for match start, opponent ready, payout sent	⬜
+3F	Analytics	Revenue tracking, active players, popular games, payout volume reports	⬜
+________________________________________
+7. Database Schema Overview
+The full SQL migration will be generated in Module 1A. This is the conceptual overview.
+users
+•	id (UUID, PK)
+•	phone (VARCHAR, UNIQUE, E.164 format)
+•	username (VARCHAR, UNIQUE)
+•	momo_number (VARCHAR — for payouts, may differ from login phone)
+•	momo_provider (ENUM: 'mtn', 'vodafone', 'airteltigo')
+•	role (ENUM: 'player', 'admin')
+•	balance_pesewas (INTEGER, default 0)
+•	is_verified (BOOLEAN)
+•	created_at, updated_at
+tournaments
+•	id (UUID, PK)
+•	title (VARCHAR)
+•	game (ENUM: 'efootball', 'fc_mobile', 'codm', 'dls')
+•	entry_fee_pesewas (INTEGER)
+•	max_players (INTEGER — must be power of 2)
+•	current_players (INTEGER, default 0)
+•	prize_pool_pesewas (INTEGER, computed at bracket generation)
+•	platform_fee_pesewas (INTEGER, computed at bracket generation)
+•	status (ENUM: 'open', 'full', 'in_progress', 'completed', 'cancelled')
+•	created_by (UUID, FK → users)
+•	created_at, updated_at
+registrations
+•	id (UUID, PK)
+•	tournament_id (UUID, FK → tournaments)
+•	user_id (UUID, FK → users)
+•	game_uid (VARCHAR — player's in-game ID for this tournament)
+•	payment_status (ENUM: 'pending', 'paid', 'refunded')
+•	payment_reference (VARCHAR — Paystack reference)
+•	seed (INTEGER — bracket position, assigned at bracket generation)
+•	eliminated (BOOLEAN, default false)
+•	created_at, updated_at
+•	UNIQUE constraint on (tournament_id, user_id)
+matches
+•	id (UUID, PK)
+•	tournament_id (UUID, FK → tournaments)
+•	round (INTEGER — 1 = first round, 2 = second, etc.)
+•	match_number (INTEGER — position within the round)
+•	player1_id (UUID, FK → users, NULLABLE — for byes or future rounds)
+•	player2_id (UUID, FK → users, NULLABLE)
+•	room_code (VARCHAR(6))
+•	player1_score (INTEGER, NULLABLE)
+•	player2_score (INTEGER, NULLABLE)
+•	player1_screenshot_url (VARCHAR, NULLABLE)
+•	player2_screenshot_url (VARCHAR, NULLABLE)
+•	player1_confirmed (BOOLEAN, default false)
+•	player2_confirmed (BOOLEAN, default false)
+•	winner_id (UUID, FK → users, NULLABLE)
+•	status (ENUM: 'pending', 'active', 'awaiting_results', 'disputed', 'completed')
+•	dispute_reason (TEXT, NULLABLE)
+•	started_at (TIMESTAMP, NULLABLE)
+•	deadline_at (TIMESTAMP, NULLABLE)
+•	created_at, updated_at
+transactions
+•	id (UUID, PK)
+•	user_id (UUID, FK → users)
+•	tournament_id (UUID, FK → tournaments, NULLABLE)
+•	match_id (UUID, FK → matches, NULLABLE)
+•	type (ENUM: 'entry_fee', 'payout', 'refund', 'platform_fee')
+•	amount_pesewas (INTEGER)
+•	status (ENUM: 'pending', 'success', 'failed')
+•	paystack_reference (VARCHAR, NULLABLE)
+•	paystack_transfer_code (VARCHAR, NULLABLE)
+•	direction (ENUM: 'in', 'out') — 'in' = money collected, 'out' = money paid out
+•	description (TEXT)
+•	created_at, updated_at
+________________________________________
+8. Paystack Integration Notes
+MoMo Collection (Entry Fees)
+•	Use Paystack Charge API with mobile_money channel
+•	Provider detection based on phone prefix (024/025/053/054/055/059 = MTN, 020/050 = Vodafone, 026/027/028/056/057 = AirtelTigo)
+•	Initialize charge → user approves on phone → Paystack sends webhook → verify and credit
+MoMo Payout (Winnings)
+•	Use Paystack Transfer API
+•	Create transfer recipient with MoMo details → initiate transfer → track status via webhook
+•	Only initiate after match result is verified
+Webhook Security
+•	Always verify the webhook signature using Paystack's secret key
+•	Verify by computing HMAC SHA-512 of the request body using your Paystack secret key and comparing to the x-paystack-signature header
+•	Reject any webhook that fails signature verification
+•	Webhooks should be idempotent — handle duplicate deliveries gracefully
+Required Environment Variables
+text
+PAYSTACK_SECRET_KEY=sk_live_xxx
+PAYSTACK_PUBLIC_KEY=pk_live_xxx
+PAYSTACK_WEBHOOK_SECRET=whsec_xxx (same as secret key for signature verification)
+________________________________________
+9. Key Algorithms
+Room Code Generation
+text
+Characters: A-Z, 2-9 (exclude 0, O, 1, I, L to avoid confusion)
+Length: 6 characters
+Example: "K7W3N9"
+Must be unique per active match
+Bracket Generation
+text
+Input: Array of registered players (verified paid)
+1. Shuffle players randomly
+2. Assign seeds 1 to N
+3. Generate round 1 matches by pairing seeds: (1v2), (3v4), (5v6), etc.
+4. Pre-create placeholder matches for subsequent rounds (player IDs null)
+5. When a match completes, slot the winner into the next round's match
+Prize Pool Calculation
+text
+total_collected = entry_fee × number_of_players
+platform_fee = total_collected × 0.10
+prize_pool = total_collected - platform_fee
+
+Example: 8 players × ₵5.00 = ₵40.00 collected
+Platform fee = ₵4.00
+Prize pool = ₵36.00 (goes to tournament winner)
+________________________________________
+10. Project Folder Structure (Planned)
+text
+clashgh/
+├── backend/
+│   ├── src/
+│   │   ├── config/          # Database, Paystack, Cloudinary config
+│   │   ├── middleware/       # Auth, error handling, validation
+│   │   ├── routes/           # Express route definitions
+│   │   ├── controllers/      # Request handlers
+│   │   ├── services/         # Business logic
+│   │   ├── utils/            # Helpers (room codes, phone formatting, etc.)
+│   │   └── app.js            # Express app setup
+│   ├── migrations/           # SQL migration files
+│   ├── seeds/                # Test data
+│   ├── .env.example
+│   ├── .gitignore
+│   └── package.json
+│
+├── mobile/                   # React Native (Expo) app
+│   ├── src/
+│   │   ├── screens/          # Screen components
+│   │   ├── components/       # Reusable UI components
+│   │   ├── navigation/       # React Navigation setup
+│   │   ├── services/         # API calls
+│   │   ├── store/            # Local state management
+│   │   ├── utils/            # Helpers
+│   │   └── assets/           # Images, fonts
+│   ├── app.json
+│   └── package.json
+│
+├── admin/                    # React (Vite) admin panel
+│   ├── src/
+│   │   ├── pages/
+│   │   ├── components/
+│   │   ├── services/
+│   │   └── App.jsx
+│   ├── .env.example
+│   └── package.json
+│
+├── agent.md                  # THIS FILE — AI project guide
+└── README.md
+________________________________________
+11. Environment Variables Template
+env
+# === Backend (.env) ===
+
+# Server
+PORT=3000
+NODE_ENV=development
+
+# Database (Supabase PostgreSQL)
+DATABASE_URL=postgresql://user:password@host:5432/dbname
+
+# JWT
+JWT_SECRET=your-jwt-secret-here
+JWT_EXPIRES_IN=1h
+JWT_REFRESH_SECRET=your-refresh-secret-here
+JWT_REFRESH_EXPIRES_IN=30d
+
+# Paystack
+PAYSTACK_SECRET_KEY=sk_test_xxx
+PAYSTACK_PUBLIC_KEY=pk_test_xxx
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your-cloud-name
+CLOUDINARY_API_KEY=your-api-key
+CLOUDINARY_API_SECRET=your-api-secret
+
+# OTP (if using an SMS provider)
+SMS_API_KEY=your-sms-api-key
+SMS_SENDER_ID=ClashGH
+
+# App
+PLATFORM_FEE_PERCENT=10
+MATCH_DEADLINE_MINUTES=30
+________________________________________
+12. Testing Strategy
+•	Each module must be independently testable
+•	Backend: Test with Postman or HTTP client, include example requests in module docs
+•	Database: Use Supabase SQL editor for direct query testing
+•	Payments: Use Paystack test mode keys — never test with live keys during development
+•	Mobile: Test on actual low-end Android device or emulator configured with limited RAM
+•	Admin: Browser testing, responsive design verification
+________________________________________
+13. Rules for the AI — FOLLOW STRICTLY
+95.	Always read this agent.md file in full before generating any code for ClashGH
+96.	Build one module at a time, in order: 1A → 1B → 1C → 1D → 1E → 1F → 2A → 2B → 2C → 2D → 2E → 2F → 3A → 3B → 3C → 3D → 3E → 3F
+97.	Never hardcode API keys, phone numbers, monetary amounts, or credentials
+98.	Always validate Paystack webhook signatures — no exceptions
+99.	Never release escrow without a verified, confirmed match result
+100.	Prioritize simplicity over cleverness — this must run on a ₵500 Tecno phone over 3G
+101.	Every module must be testable independently before moving to the next
+102.	Update the module status in the build plan (⬜ → ✅) after completing each module
+103.	Do NOT assume project structure, file names, or implementation details. Before generating code for any module, ask the user clarifying questions about:
+•	Folder structure and file naming preferences
+•	Database-specific decisions (indexes, constraints, naming)
+•	Any ambiguous requirements
+•	Integration points with other modules
+104.	Ask before building. If any requirement is unclear or ambiguous, stop and ask the user for clarification. Do not guess.
+105.	When writing backend code, always include:
+•	Input validation
+•	Proper error responses in the standard format
+•	Appropriate HTTP status codes
+•	Error logging with context
+106.	When writing mobile code, always consider:
+•	Low memory usage
+•	Image compression before upload
+•	Offline state handling
+•	Large tap targets for touch
+•	Minimal dependencies to keep APK size small
+107.	Store monetary values as integers (pesewas) — never use floats for money
+108.	All database queries must use parameterized queries — never string concatenation
+________________________________________
+14. Glossary
+Term	Meaning
+GHS / ₵	Ghana Cedis — the currency
+Pesewas	1/100 of a Cedi — used for internal storage (like cents)
+MoMo	Mobile Money — digital wallet tied to a phone number
+Paystack	Payment gateway supporting MoMo in Ghana
+Room Code	6-char code players use to create/join a private game match
+UID / Game UID	Player's unique ID within a specific mobile game
+Bracket	Single-elimination tournament structure
+Seed	Player's assigned position in the bracket
+Escrow	Entry fees held until match results are verified
+Platform Fee	10% of total entry fees taken by ClashGH
+Dispute	When players disagree on a match result
+Lobby	Waiting room while a tournament fills up
+________________________________________
+Last updated: 2025-01-24
+Version: 1.0
+Next module to build: 1A — Database Schema
+website
+Create an agent.md file for my project called ClashGH. This file will guide you (the AI) on how to write code for this project going forward. Format the output as a clean markdown file I can save directly.
+Project Overview:
+ClashGH is a mobile-first tournament escrow app for Ghana. Players pay entry fees via Mobile Money (MoMo), get auto-matched into single-elimination brackets for mobile games (eFootball, FC Mobile, CODM, Dream League Soccer), play using shared room codes, submit score screenshots, and winners receive automatic MoMo payouts.
+Tech Stack:
+Backend: Node.js + Express
+Database: PostgreSQL (Supabase)
+Payments: Paystack API (MoMo collect + transfer)
+Frontend: React Native (Expo)
+Admin Panel: React (Vite)
+Image Storage: Cloudinary
+Auth: JWT
+Hosting: Render
+Key Business Rules:
+All money in Ghana Cedis (GHS / ₵)
+Entry fees collected BEFORE player enters bracket
+Prize pool = total entry fees minus 10% platform fee
+Payouts only after BOTH players confirm result OR admin resolves dispute
+Single-elimination brackets only
+Room codes = 6-digit random strings, UIDs = game-specific player IDs
+Screenshots required for score verification
+Phone numbers in Ghana format (024XXXXXXX, 055XXXXXXX, etc.)
+Ghana Market Constraints:
+Android-first (95% of users)
+Low data usage (compress images, minimal API calls)
+Support low-end phones (Tecno, Infinix, Itel)
+MoMo is the ONLY payment method
+Offline-friendly where possible
+App size under 15MB
+Coding Conventions:
+JavaScript only, no TypeScript
+async/await, no callbacks
+ES modules (import/export)
+Small single-purpose functions
+try/catch error handling everywhere
+dotenv for all secrets
+Comment complex business logic
+API response format: { success: boolean, data: any, message: string }
+Proper HTTP status codes (200, 201, 400, 401, 404, 500)
+Build Plan — 3 Parts, 18 Modules (build in this exact order):
+PART 1: BACKEND ENGINE
+1A. Database — PostgreSQL schema: users, tournaments, registrations, matches, transactions
+1B. Auth API — Phone login, OTP, JWT
+1C. Tournament API — Create, list, join, manage tournaments
+1D. Bracket Engine — Auto-generate single-elimination brackets when lobby fills
+1E. Paystack MoMo — Collect entry fees, verify webhooks, hold escrow
+1F. Match Flow — Room codes, UIDs, accept results, advance winners
+PART 2: MOBILE APP (Player-Facing)
+2A. Auth Screens — Phone login, OTP input, username setup
+2B. Home & Lobby — Browse tournaments, filter by game, join button
+2C. Tournament View — Bracket, position, entry fee, prize pool
+2D. Match Room — Opponent, room code, UID, instructions, timer
+2E. Score Submit — Screenshot upload, confirm score, dispute button
+2F. Wallet — Balance, transaction history, payout status
+PART 3: ADMIN & VERIFICATION
+3A. Score Verification — Opponent confirms/disputes, auto-advance if both agree
+3B. Dispute System — Flag disputes, lock payout until resolved
+3C. Admin Dashboard — Web panel for tournaments, players, disputes, revenue
+3D. Screenshot Storage — Cloudinary upload and storage
+3E. Notifications — Push/SMS for match start, opponent ready, payout sent
+3F. Analytics — Revenue, active players, popular games, payout volume
+Rules for the AI:
+Always read agent.md before generating code
+Build one module at a time in order: 1A → 1F → 2A → 2F → 3A → 3F
+Never hardcode API keys, phone numbers, or amounts
+Always validate Paystack webhook signatures
+Never release escrow without verified results
+Prioritize simplicity over cleverness
+Code must work on a ₵500 Tecno phone with 3G
+Every module must be testable independently
+Track module status with ⬜ (pending) and ✅ (done)
+Do NOT assume project structure. Before generating code for any module, ask the user clarifying questions about folder structure, file naming, database choices, and any missing specifications. Plan together before writing code.
+Ask before building. If any requirement is unclear or ambiguous, stop and ask the user for clarification. Do not guess.
+

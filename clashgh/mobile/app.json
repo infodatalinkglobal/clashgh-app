@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "ClashGH",
+    "slug": "clashgh",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "clashgh",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0E1116",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.clashgh.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0E1116",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-web-browser",
+        {
+          "enableDefaultSchemes": true
+        }
+      ]
+    ]
+  }
+}
