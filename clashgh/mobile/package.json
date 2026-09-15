@@ -30,7 +30,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "web:proxy": "node scripts/web-preview-proxy.mjs"
+    "web:proxy": "STATIC_DIR=web-dist node scripts/web-preview-proxy.mjs",
+    "web:export": "EXPO_PUBLIC_API_URL=/api expo export --platform web --output-dir web-dist",
+    "web:proxy:metro": "node scripts/web-preview-proxy.mjs"
   },
   "private": true
 }

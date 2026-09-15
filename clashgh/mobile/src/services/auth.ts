@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Config } from '../config';
 import { api, ApiError, endpoints, type Profile } from './api';
@@ -43,22 +44,41 @@ async function getSupabase(): Promise<SupabaseClient> {
   return supabaseClient;
 }
 
+/**
+ * Token storage: expo-secure-store on Android/iOS (encrypted keystore).
+ * On web (dev preview only) SecureStore is unavailable, so fall back to an
+ * in-memory copy + sessionStorage (best-effort — may be blocked in iframes).
+ */
+let memToken: string | null = null;
+const isWeb = Platform.OS === 'web';
+const webStore = {
+  get: () => { try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; } },
+  set: (t: string) => { try { sessionStorage.setItem(TOKEN_KEY, t); } catch { /* blocked */ } },
+  del: () => { try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* blocked */ } },
+};
+
 class AuthService {
   // -- token storage -------------------------------------------------------
 
   async loadToken(): Promise<string | null> {
+    if (memToken) return memToken;
+    if (isWeb) return (memToken = webStore.get());
     try {
-      return await SecureStore.getItemAsync(TOKEN_KEY);
+      return (memToken = await SecureStore.getItemAsync(TOKEN_KEY));
     } catch {
       return null;
     }
   }
 
   private async saveToken(token: string) {
+    memToken = token;
+    if (isWeb) return webStore.set(token);
     await SecureStore.setItemAsync(TOKEN_KEY, token);
   }
 
   private async clearToken() {
+    memToken = null;
+    if (isWeb) return webStore.del();
     try {
       await SecureStore.deleteItemAsync(TOKEN_KEY);
     } catch {

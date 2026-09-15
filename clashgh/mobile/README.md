@@ -136,18 +136,25 @@ and the Account screen.
 
 ### Web preview (dev only)
 
-`npx expo start --web` works for a quick look (needs `react-dom` +
-`react-native-web`, installed with `--no-save`). Behind a sandbox/tunnel
-preview the browser cannot call the API on a second origin (gateway access
-tokens, stripped `Authorization`), so serve app + API from ONE port:
+The shipping target is Android; web is for a quick look. Two things make
+a tunnel/sandbox preview different from a laptop:
+
+1. The browser cannot call the API on a **second origin** (gateway access
+   tokens, stripped `Authorization`). So serve app + API from **one port**.
+2. A Metro **dev** bundle keeps talking to Metro's own host (HMR,
+   symbolication) — blocked by the tunnel. So serve a **static export**.
+3. `expo-secure-store` has no web implementation — `services/auth.ts` falls
+   back to memory + sessionStorage on `Platform.OS === 'web'`.
 
 ```bash
-EXPO_PUBLIC_API_URL=/api npx expo start --web --port 8081   # Metro
-npm run web:proxy                                           # :8082 → /api→:3000, else→:8081
+npm run web:export     # EXPO_PUBLIC_API_URL=/api expo export --platform web → web-dist/
+npm run web:proxy      # :8082 → /api,/uploads-dev → :3000, everything else → web-dist/
 ```
 
-Open **:8082**. `scripts/web-preview-proxy.mjs` is zero-dependency and
-never used by native builds.
+Open **:8082**. Re-run `web:export` after code changes (the proxy serves
+from disk, no restart). `web:proxy:metro` proxies to a live Metro instead
+(fine on a laptop, not behind a tunnel). `scripts/web-preview-proxy.mjs`
+is zero-dependency and never used by native builds.
 
 ## Structure (agent.md §10)
 
