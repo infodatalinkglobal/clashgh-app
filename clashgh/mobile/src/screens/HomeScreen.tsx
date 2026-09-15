@@ -192,6 +192,9 @@ export function HomeScreen({ navigation }: Props) {
           <Pressable onPress={() => navigation.navigate('Wallet')} hitSlop={8} style={[styles.avatar, { width: undefined, paddingHorizontal: spacing.md }]}>
             <Text style={{ color: colors.textMuted, fontSize: typography.caption, fontWeight: fontWeights.semibold }}>₵ Wallet</Text>
           </Pressable>
+          <Pressable onPress={() => navigation.navigate('Inbox')} hitSlop={8} style={styles.avatar} accessibilityLabel="Notifications">
+            <Text style={{ color: colors.textMuted, fontSize: typography.caption }}>🔔</Text>
+          </Pressable>
           <Pressable onPress={() => navigation.navigate('Me')} hitSlop={8} style={styles.avatar}>
             <Text style={{ color: colors.gold, fontWeight: fontWeights.bold }}>
               {(profile?.username ?? '?').slice(0, 1).toUpperCase()}

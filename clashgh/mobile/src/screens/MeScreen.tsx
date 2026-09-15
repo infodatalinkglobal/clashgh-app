@@ -46,6 +46,7 @@ export function MeScreen() {
       </Text>
 
       <Button label="Wallet · winnings & fees →" variant="secondary" onPress={() => navigation.navigate('Wallet')} />
+      <Button label="Notifications →" variant="secondary" onPress={() => navigation.navigate('Inbox')} />
 
       <View style={{ flex: 1 }} />
       <Button label="Sign out" variant="danger" busy={busy} onPress={() => void signOut()} />

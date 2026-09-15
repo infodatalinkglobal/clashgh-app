@@ -138,11 +138,16 @@ export function JoinScreen({ navigation, route }: Props) {
       // Live Paystack: hand off to the MoMo authorization page. The user
       // approves the USSD/push prompt on their phone; we keep polling.
       if (res.charge.authorization_url) {
-        try {
-          const WebBrowser = await import('expo-web-browser');
-          void WebBrowser.openBrowserAsync(res.charge.authorization_url);
-        } catch {
-          // browser unavailable — the MoMo prompt still arrives on the phone
+        if (Platform.OS === 'web') {
+          // New tab: this tab keeps polling and flips to "paid" on its own.
+          window.open(res.charge.authorization_url, '_blank', 'noopener');
+        } else {
+          try {
+            const WebBrowser = await import('expo-web-browser');
+            void WebBrowser.openBrowserAsync(res.charge.authorization_url);
+          } catch {
+            // browser unavailable — the MoMo prompt still arrives on the phone
+          }
         }
       }
     } catch (e) {
@@ -271,7 +276,8 @@ export function JoinScreen({ navigation, route }: Props) {
                       label="Open payment page again"
                       variant="secondary"
                       onPress={() => {
-                        void import('expo-web-browser').then((wb) => wb.openBrowserAsync(charge.authorization_url as string));
+                        if (Platform.OS === 'web') window.open(charge.authorization_url as string, '_blank', 'noopener');
+                        else void import('expo-web-browser').then((wb) => wb.openBrowserAsync(charge.authorization_url as string));
                       }}
                     />
                   ) : null}

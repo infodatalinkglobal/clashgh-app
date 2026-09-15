@@ -8,7 +8,11 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
+
+/** On the web the app is a phone-width column centred on wide screens. */
+export const WEB_MAX_WIDTH = 480;
 
 /** Base screen wrapper: dark background, safe padding, scroll-free. */
 export function Screen({
@@ -18,8 +22,13 @@ export function Screen({
   children: React.ReactNode;
   style?: ViewStyle;
 }) {
+  const { width } = useWindowDimensions();
+  const framed = Platform.OS === 'web' && width > WEB_MAX_WIDTH + 40;
+  if (!framed) return <View style={[styles.screen, style]}>{children}</View>;
   return (
-    <View style={[styles.screen, style]}>{children}</View>
+    <View style={styles.webBackdrop}>
+      <View style={[styles.screen, styles.webFrame, style]}>{children}</View>
+    </View>
   );
 }
 
@@ -165,6 +174,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     padding: spacing.xl,
     gap: spacing.lg,
+  },
+  webBackdrop: {
+    flex: 1,
+    backgroundColor: '#07090C',
+    alignItems: 'center',
+  },
+  webFrame: {
+    width: '100%',
+    maxWidth: WEB_MAX_WIDTH,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: colors.border,
   },
   button: {
     borderRadius: radius.md,

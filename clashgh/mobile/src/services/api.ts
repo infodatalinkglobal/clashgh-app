@@ -208,6 +208,8 @@ export interface NotificationRow {
   payload: Record<string, unknown>;
   status: 'pending' | 'sent' | 'failed' | 'skipped';
   created_at: string;
+  title: string;
+  body: string;
 }
 
 export interface TransactionRow {

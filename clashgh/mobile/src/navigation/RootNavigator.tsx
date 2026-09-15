@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '../store/AuthContext';
 import { Config } from '../config';
 import { colors } from '../theme';
@@ -10,6 +10,7 @@ import { JoinScreen } from '../screens/JoinScreen';
 import { MatchScreen } from '../screens/MatchScreen';
 import { SubmitResultScreen } from '../screens/SubmitResultScreen';
 import { TournamentScreen } from '../screens/TournamentScreen';
+import { InboxScreen } from '../screens/InboxScreen';
 import { WalletScreen } from '../screens/WalletScreen';
 import { MeScreen } from '../screens/MeScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
@@ -24,6 +25,7 @@ export type RootStackParamList = {
   SubmitResult: { matchId: string };
   Me: undefined;
   Wallet: undefined;
+  Inbox: undefined;
   Onboarding: undefined;
   SignIn: undefined;
 };
@@ -58,7 +60,12 @@ export function RootNavigator() {
     import('expo-linking')
       .then(({ default: Linking }) =>
         Linking.getInitialURL().then((url) => {
-          if (!cancelled && url) void handleAuthUrl(url);
+          // Only auth callbacks carry a code; on web every page load has a URL.
+          if (!cancelled && url && /[?&#]code=/.test(url)) {
+            void handleAuthUrl(url).finally(() => {
+              if (Platform.OS === 'web') window.history.replaceState({}, '', '/');
+            });
+          }
         }),
       )
       .catch(() => undefined);
@@ -81,6 +88,7 @@ export function RootNavigator() {
         <Stack.Screen name="Match" component={MatchScreen} />
         <Stack.Screen name="SubmitResult" component={SubmitResultScreen} />
         <Stack.Screen name="Wallet" component={WalletScreen} />
+        <Stack.Screen name="Inbox" component={InboxScreen} />
         <Stack.Screen
           name="Me"
           component={MeScreen}

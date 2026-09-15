@@ -46,15 +46,16 @@ async function getSupabase(): Promise<SupabaseClient> {
 
 /**
  * Token storage: expo-secure-store on Android/iOS (encrypted keystore).
- * On web (dev preview only) SecureStore is unavailable, so fall back to an
- * in-memory copy + sessionStorage (best-effort — may be blocked in iframes).
+ * On web SecureStore is unavailable: use localStorage (players stay signed
+ * in across visits, like any web app) with an in-memory copy as fallback
+ * when storage is blocked (private mode / third-party iframe).
  */
 let memToken: string | null = null;
 const isWeb = Platform.OS === 'web';
 const webStore = {
-  get: () => { try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; } },
-  set: (t: string) => { try { sessionStorage.setItem(TOKEN_KEY, t); } catch { /* blocked */ } },
-  del: () => { try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* blocked */ } },
+  get: () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
+  set: (t: string) => { try { localStorage.setItem(TOKEN_KEY, t); } catch { /* blocked */ } },
+  del: () => { try { localStorage.removeItem(TOKEN_KEY); } catch { /* blocked */ } },
 };
 
 class AuthService {
@@ -142,7 +143,10 @@ class AuthService {
       throw new ApiError(0, 'Google sign-in is available when the app is configured for Supabase Auth');
     }
     const sb = await getSupabase();
-    const redirectTo = `${Config.deeplinkScheme}://auth/callback`;
+    // Web: Supabase redirects back to this same page; native: deep link.
+    const redirectTo = Platform.OS === 'web'
+      ? `${window.location.origin}/auth/callback`
+      : `${Config.deeplinkScheme}://auth/callback`;
     const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo },

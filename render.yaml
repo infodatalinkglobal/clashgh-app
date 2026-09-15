@@ -1,0 +1,56 @@
+# Render blueprint — one web service serves the API and the web app from a
+# single origin (https://<service>.onrender.com):
+#   /api/*  → Express API      /*  → Expo web build (mobile/web-dist)
+# Database: Supabase Postgres (DATABASE_URL). Set secrets in the dashboard.
+services:
+  - type: web
+    name: clashgh
+    runtime: node
+    region: frankfurt          # closest Render region to Accra
+    plan: starter
+    rootDir: clashgh
+    buildCommand: >
+      npm ci --prefix backend &&
+      npm ci --prefix mobile &&
+      npm run web:export --prefix mobile
+    startCommand: npm start --prefix backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WEB_DIST
+        value: ../mobile/web-dist
+      - key: AUTH_PROVIDER
+        value: supabase
+      - key: PAYSTACK_MODE
+        value: live
+      - key: SCREENSHOT_STORAGE
+        value: cloudinary
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_WEBHOOK_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: MAIL_PROVIDER
+        value: resend
+      - key: PUSH_PROVIDER
+        value: expo
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: ADMIN_ALERT_EMAIL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false            # admin panel origin, e.g. https://admin.clashgh.app

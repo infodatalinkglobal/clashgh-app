@@ -22,7 +22,14 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single",
+      "name": "ClashGH",
+      "shortName": "ClashGH",
+      "themeColor": "#0E1116",
+      "backgroundColor": "#0E1116",
+      "description": "Paid mobile-game tournaments in Ghana. Enter with MoMo, win real cash."
     },
     "plugins": [
       "expo-secure-store",

@@ -75,6 +75,8 @@ export const env = {
   cloudinaryApiUrl: (process.env.CLOUDINARY_API_URL || 'https://api.cloudinary.com').replace(/\/+$/, ''),
   screenshotRetentionDays: Number(process.env.SCREENSHOT_RETENTION_DAYS) || 90,
   // Browser origins allowed in production (comma-separated; admin panel URL).
+  // Directory of an `expo export --platform web` build to serve at `/` (optional).
+  webDist: process.env.WEB_DIST || '',
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
 

@@ -207,3 +207,33 @@ mobile/src/
   in `app.json > extra.eas` for production tokens (`eas init` sets it).
 - Deps: `expo-notifications`, `expo-device` (SDK 57 versions). Plugin
   configured in `app.json` (gold accent, `default` channel).
+
+## Web as a first-class target (PWA)
+
+The same codebase ships as a web app today and becomes the store app later
+(nothing here is web-only; every branch is `Platform.OS === 'web'` guarded).
+
+- **Session** — on web the token lives in `localStorage` (SecureStore has no
+  web backend), so a refresh keeps you signed in.
+- **Layout** — `Screen` renders a centred 480 px phone-width column on wide
+  viewports (`WEB_MAX_WIDTH` in `components/ui.tsx`); phones are unchanged.
+- **PWA** — `public/manifest.json`, `public/icons/*`, and `public/index.html`
+  (theme colour, apple-touch-icon, standalone display) are copied verbatim
+  into `web-dist` by `npm run web:export`. "Add to Home Screen" works on
+  Android Chrome and iOS Safari.
+- **Sign-in** — Google OAuth redirects to `window.location.origin/auth/callback`;
+  `RootNavigator` picks up `?code=` from the page URL and cleans it.
+- **Paying** — Paystack's `authorization_url` opens in a new tab; the original
+  tab keeps polling and flips to *paid* by itself.
+- **Notifications** — no push on web, so there's an in-app **Inbox**
+  (`InboxScreen`, bell icon on Home, also under Account). It uses
+  `GET /api/me/notifications`, which now returns server-rendered
+  `title`/`body` from the same templates that drive push.
+- **Hosting** — the API serves `web-dist` at `/` when `WEB_DIST` is set
+  (see `backend/.env.example` and the root `render.yaml`): one origin, no CORS,
+  hashed bundles cached immutable, `index.html` never cached, SPA fallback.
+
+```
+cd mobile && npm run web:export            # → mobile/web-dist
+cd ../backend && WEB_DIST=../mobile/web-dist npm start
+```

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { TEMPLATES } from '../services/notifications.js';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
@@ -42,5 +43,17 @@ notificationsRouter.get('/me/notifications', requireAuth, asyncHandler(async (re
      ORDER BY created_at DESC LIMIT $2`,
     [req.user.id, limit],
   );
-  res.json({ success: true, data: { notifications: rows }, message: 'Notifications loaded' });
+  // Render title/body server-side so web (no push channel) shows the same
+  // copy the phone would have received. Rendering is pure; failures degrade
+  // to the raw template name rather than breaking the inbox.
+  const notifications = rows.map((row) => {
+    let title = row.template.replace(/_/g, ' ');
+    let body = '';
+    try {
+      const r = TEMPLATES[row.template]?.(req.user, row.payload)?.push;
+      if (r) ({ title, body } = r);
+    } catch { /* keep fallback */ }
+    return { ...row, title, body };
+  });
+  res.json({ success: true, data: { notifications }, message: 'Notifications loaded' });
 }));

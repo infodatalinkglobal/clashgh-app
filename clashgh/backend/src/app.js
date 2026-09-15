@@ -1,3 +1,4 @@
+import path from 'node:path';
 import express from 'express';
 import { env } from './config/env.js';
 import { authRouter } from './routes/auth.js';
@@ -67,6 +68,28 @@ export function createApp() {
   }
   if (env.paystackMode === 'stub' && env.nodeEnv !== 'production') {
     app.use('/api', devPayRouter());
+  }
+
+  // Web app: when WEB_DIST points at an `expo export --platform web` output
+  // directory, serve it from the same origin as the API. Same-origin means
+  // no CORS, cookies-free bearer auth works, and the Paystack callback and
+  // Google OAuth redirect land on one host. Hashed bundles cache forever;
+  // index.html never does. Anything that isn't /api or a real file falls
+  // back to index.html (client-side routing).
+  if (env.webDist) {
+    const webDist = path.resolve(env.webDist);
+    app.use(express.static(webDist, {
+      index: 'index.html',
+      setHeaders(res, filePath) {
+        if (filePath.includes(`${path.sep}_expo${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        else res.setHeader('Cache-Control', 'no-cache');
+      },
+    }));
+    app.get(/^(?!\/api(\/|$)).*/, (req, res, next) => {
+      if (req.method !== 'GET' || !req.accepts('html')) return next();
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(webDist, 'index.html'));
+    });
   }
 
   app.use(notFoundHandler);
