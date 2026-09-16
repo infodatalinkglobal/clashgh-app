@@ -51,7 +51,7 @@ export function Bracket({
         return (
           <View key={round} style={{ width: MATCH_W + spacing.lg }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.sm }}>
-              <View style={{ width: 3, height: 10, borderRadius: 2, backgroundColor: round === totalRounds ? colors.gold : colors.cyan }} />
+              <View style={{ width: 3, height: 10, borderRadius: 2, backgroundColor: round === totalRounds ? colors.gold : colors.border }} />
               <Text style={styles.roundLabel}>{ROUND_LABEL(round, totalRounds)}</Text>
             </View>
             {matches.map((m) => (
@@ -79,7 +79,7 @@ function MatchCard({
 }) {
   const mine = !!meId && (match.player1?.id === meId || match.player2?.id === meId);
   const live = match.status === 'active' || match.status === 'awaiting_results';
-  const borderColor = live ? colors.gold : match.status === 'disputed' ? colors.red : mine ? colors.cyan : colors.border;
+  const borderColor = live ? colors.gold : match.status === 'disputed' ? colors.red : mine ? colors.borderBright : colors.border;
   return (
     <Pressable
       onPress={onPress && mine ? () => onPress(match) : undefined}
@@ -117,7 +117,7 @@ function PlayerRow({ p, winner, meId }: { p: BracketPlayer | null; winner: strin
         numberOfLines={1}
         style={[
           styles.player,
-          me && { color: colors.cyan, fontWeight: fontWeights.semibold },
+          me && { color: colors.gold, fontWeight: fontWeights.semibold },
           won && { fontWeight: fontWeights.bold },
           lost && { color: colors.textFaint, textDecorationLine: 'line-through' },
         ]}
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   divider: { height: 1, backgroundColor: colors.border },
-  liveGlow: { shadowColor: colors.gold, shadowOpacity: 0.45, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
+  liveGlow: {},
   liveBar: { position: 'absolute', left: 0, top: 8, bottom: 8, width: 3, borderRadius: 2, backgroundColor: colors.gold },
   player: { color: colors.text, fontSize: typography.caption, flexShrink: 1 },
   seed: {

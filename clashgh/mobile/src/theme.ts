@@ -1,50 +1,48 @@
 /**
- * ClashGH theme — esports arena: near-black backdrop, electric gold primary,
- * neon cyan secondary, per-game accent colours. Plain tokens; screens stay
- * dependency-free (gradients come from expo-linear-gradient only).
+ * ClashGH theme — flat, dark, product-grade. One accent (gold), neutral
+ * surfaces, no gradients or glows. Per-game colours are used only as thin
+ * identifiers (a 3px bar, a monogram tile), never as decoration.
  */
 export const colors = {
-  bg: '#07090D',
-  bgAlt: '#0B0F15',
-  surface: '#111721',
-  surfaceAlt: '#182030',
-  border: '#232D3D',
-  borderBright: '#33405A',
+  bg: '#0B0D10',
+  surface: '#14171C',
+  surfaceAlt: '#1B1F26',
+  border: '#262B34',
+  borderBright: '#343B47',
 
-  text: '#F4F7FB',
-  textMuted: '#93A0B4',
-  textFaint: '#5E6B7E',
+  text: '#F2F4F7',
+  textMuted: '#9AA3B2',
+  textFaint: '#667085',
 
-  gold: '#FFC61A',
+  gold: '#F2B518',
   goldDim: '#B8860B',
-  goldGlow: 'rgba(255,198,26,0.45)',
-  cyan: '#22D3EE',
-  cyanGlow: 'rgba(34,211,238,0.35)',
-  green: '#22C55E',
-  red: '#F43F5E',
-  blue: '#3B82F6',
-  purple: '#A855F7',
-  orange: '#FB7185',
+  goldGlow: 'rgba(242,181,24,0.18)',
+  cyan: '#4CC3E0',
+  cyanGlow: 'rgba(76,195,224,0.15)',
+  green: '#3DBE6E',
+  red: '#E5484D',
+  blue: '#5B8DEF',
+  purple: '#9B7BEA',
+  orange: '#F0825E',
 
   overlay: 'rgba(0,0,0,0.6)',
 } as const;
 
-/** Per-game accent + key art. Art is original (no trademarks), 16:9. */
+/** Per-game identity: short code + colour. No artwork. */
 export const GAMES = {
-  efootball: { label: 'eFootball', accent: '#22D3EE', art: require('../assets/games/efootball.jpg') },
-  fc_mobile: { label: 'FC Mobile', accent: '#22C55E', art: require('../assets/games/fc_mobile.jpg') },
-  codm: { label: 'CODM', accent: '#FB7185', art: require('../assets/games/codm.jpg') },
-  dls: { label: 'DLS', accent: '#A855F7', art: require('../assets/games/dls.jpg') },
+  efootball: { label: 'eFootball', code: 'eF', accent: '#4CC3E0' },
+  fc_mobile: { label: 'FC Mobile', code: 'FC', accent: '#3DBE6E' },
+  codm: { label: 'CODM', code: 'CD', accent: '#F0825E' },
+  dls: { label: 'DLS', code: 'DL', accent: '#9B7BEA' },
 } as const;
-export const HERO_ART = require('../assets/games/hero.jpg');
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const;
-export const radius = { sm: 6, md: 10, lg: 16, xl: 22, pill: 999 } as const;
+export const radius = { sm: 6, md: 10, lg: 12, xl: 16, pill: 999 } as const;
 
 export const typography = {
-  display: 34,
-  title: 28,
-  heading: 20,
+  display: 32,
+  title: 26,
+  heading: 19,
   subheading: 16,
   body: 15,
   caption: 13,
@@ -56,13 +54,13 @@ export const fontWeights = {
   medium: '500',
   semibold: '600',
   bold: '700',
-  black: '900',
+  black: '800',
 } as const;
 
-/** Uppercase, tracked label style used for esports "eyebrow" text. */
+/** Small uppercase label for section/field names. */
 export const eyebrow = {
   fontSize: 11,
-  fontWeight: '700' as const,
-  letterSpacing: 1.6,
+  fontWeight: '600' as const,
+  letterSpacing: 0.8,
   textTransform: 'uppercase' as const,
 };

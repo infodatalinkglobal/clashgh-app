@@ -96,7 +96,7 @@ export function SubmitResultScreen({ navigation, route }: Props) {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md }}>
           <Badge label={done.status === 'completed' ? 'Match completed' : done.status === 'disputed' ? 'Sent for review' : 'Result recorded'} tone={done.status === 'disputed' ? 'red' : 'green'} />
           <Text style={styles.big}>
-            {done.status === 'completed' ? (won ? 'You won! 🎉' : 'Result confirmed') : done.status === 'disputed' ? 'Under admin review' : 'Waiting for opponent'}
+            {done.status === 'completed' ? (won ? 'You won' : 'Result confirmed') : done.status === 'disputed' ? 'Under admin review' : 'Waiting for opponent'}
           </Text>
           <Text style={[styles.meta, { textAlign: 'center' }]}>
             {done.status === 'completed'

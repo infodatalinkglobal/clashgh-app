@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ImageBackground, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -14,7 +13,7 @@ import {
 } from '../services/api';
 import { Config } from '../config';
 import { useAuth } from '../store/AuthContext';
-import { Badge, Button, Confetti, Countdown, Eyebrow, FadeIn, LiveDot, Screen } from '../components/ui';
+import { Badge, Button, Countdown, Eyebrow, FadeIn, GameTile, LiveDot, Screen } from '../components/ui';
 import { Bracket } from '../components/Bracket';
 import { GAMES, colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -102,40 +101,41 @@ export function TournamentScreen({ navigation, route }: Props) {
           />
         }
       >
-        <ImageBackground source={t ? GAMES[t.game].art : undefined} style={styles.hero}>
-          <LinearGradient colors={['rgba(7,9,13,0.2)', 'rgba(7,9,13,0.6)', colors.bg]} locations={[0, 0.6, 1]} style={StyleSheet.absoluteFill} />
+        <View style={styles.hero}>
           <Pressable onPress={() => navigation.goBack()} hitSlop={10} style={styles.back}>
-            <Text style={{ color: colors.text, fontSize: typography.body, fontWeight: fontWeights.bold }}>‹ Back</Text>
+            <Text style={{ color: colors.text, fontSize: typography.body, fontWeight: fontWeights.semibold }}>‹ Back</Text>
           </Pressable>
           {t ? (
-            <FadeIn style={{ padding: spacing.xl, gap: spacing.sm }}>
-              <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap', alignItems: 'center' }}>
-                <View style={[styles.gamePill, { borderColor: GAMES[t.game].accent }]}>
-                  <Text style={{ color: GAMES[t.game].accent, fontSize: typography.tiny, fontWeight: fontWeights.bold, letterSpacing: 1 }}>{GAMES[t.game].label.toUpperCase()}</Text>
+            <FadeIn style={{ gap: spacing.md }}>
+              <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
+                <GameTile code={GAMES[t.game].code} accent={GAMES[t.game].accent} size={48} />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Text style={styles.gameLabel}>{GAMES[t.game].label}</Text>
+                    {t.status === 'in_progress' ? (
+                      <View style={styles.livePill}><LiveDot size={6} /><Text style={styles.liveText}>Live</Text></View>
+                    ) : (
+                      <Badge label={t.status.replace('_', ' ')} tone={t.status === 'cancelled' ? 'red' : t.status === 'open' ? 'green' : 'muted'} />
+                    )}
+                    {reg?.payment_status === 'paid' ? <Badge label="You're in" tone="green" /> : null}
+                    {champion ? <Badge label="Champion" tone="gold" /> : eliminated ? <Badge label="Eliminated" tone="muted" /> : null}
+                  </View>
+                  <Text style={styles.title}>{t.title}</Text>
                 </View>
-                {t.status === 'in_progress' ? (
-                  <View style={styles.livePill}><LiveDot size={6} /><Text style={styles.liveText}>LIVE</Text></View>
-                ) : (
-                  <Badge label={t.status.replace('_', ' ')} tone={t.status === 'cancelled' ? 'red' : t.status === 'open' ? 'green' : 'muted'} />
-                )}
-                {reg?.payment_status === 'paid' ? <Badge label="You're in" tone="green" /> : null}
-                {champion ? <Badge label="Champion 🏆" tone="gold" /> : eliminated ? <Badge label="Eliminated" tone="muted" /> : null}
               </View>
-              <Text style={styles.title}>{t.title}</Text>
-              <Text style={{ color: colors.textMuted, fontSize: typography.caption, fontWeight: fontWeights.semibold }}>
-                {t.host ? `Hosted by @${t.host.username ?? 'host'} · settled by ClashGH` : '★ Official ClashGH cup'}
+              <Text style={{ color: colors.textMuted, fontSize: typography.caption }}>
+                {t.host ? `Hosted by @${t.host.username ?? 'host'} · payments and results handled by ClashGH` : 'Official ClashGH tournament'}
               </Text>
               {t.status === 'open' ? (
-                <Countdown to={t.closes_at} prefix="Registration closes in " style={{ color: colors.cyan, fontSize: typography.caption, fontWeight: fontWeights.semibold }} />
+                <Countdown to={t.closes_at} prefix="Registration closes in " style={{ color: colors.text, fontSize: typography.caption, fontWeight: fontWeights.medium }} />
               ) : t.status === 'full' ? (
-                <Countdown to={t.starts_at} prefix="Kick-off in " style={{ color: colors.gold, fontSize: typography.caption, fontWeight: fontWeights.semibold }} />
+                <Countdown to={t.starts_at} prefix="Kick-off in " style={{ color: colors.text, fontSize: typography.caption, fontWeight: fontWeights.medium }} />
               ) : (
                 <Text style={styles.meta}>{updatedAt ? `Updated ${updatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</Text>
               )}
             </FadeIn>
           ) : null}
-        </ImageBackground>
-        {champion ? <Confetti /> : null}
+        </View>
 
         <View style={{ padding: spacing.xl, paddingTop: 0, gap: spacing.lg }}>
         {error && !t ? <Text style={{ color: colors.red }}>{error}</Text> : null}
@@ -145,12 +145,11 @@ export function TournamentScreen({ navigation, route }: Props) {
           <>
             {/* Prize pool */}
             <View style={[styles.card, styles.prizeCard]}>
-              <LinearGradient colors={['rgba(255,198,26,0.16)', 'rgba(255,198,26,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
-              <Eyebrow color={colors.gold}>{t.prize_pool_pesewas !== null ? 'Prize pool' : 'Prize pool (if lobby fills)'}</Eyebrow>
+              <Eyebrow>{t.prize_pool_pesewas !== null ? 'Prize pool' : 'Prize pool (if lobby fills)'}</Eyebrow>
               <Text style={styles.big}>{pesewasToGhs(t.prize_pool_pesewas ?? t.projection_if_full.first_prize_pesewas + t.projection_if_full.runnerup_prize_pesewas)}</Text>
               <View style={{ flexDirection: 'row', gap: spacing.lg }}>
-                <Split label="🥇 1st" value={pesewasToGhs(first)} pct={t.first_place_percent} />
-                <Split label="🥈 Runner-up" value={pesewasToGhs(runnerUp)} pct={t.runnerup_percent} />
+                <Split label="Champion" value={pesewasToGhs(first)} pct={t.first_place_percent} />
+                <Split label="Runner-up" value={pesewasToGhs(runnerUp)} pct={t.runnerup_percent} />
               </View>
               <Text style={styles.meta2}>
                 Entry {pesewasToGhs(t.entry_fee_pesewas)} × {t.max_players} players · {100 - t.first_place_percent - t.runnerup_percent}% {t.host ? 'host & platform fee' : 'platform fee'}
@@ -191,7 +190,6 @@ export function TournamentScreen({ navigation, route }: Props) {
 
             {/* Bracket */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm }}>
-              <View style={{ width: 4, height: 18, backgroundColor: colors.gold, borderRadius: 2 }} />
               <Text style={styles.section}>Bracket</Text>
             </View>
             {bracket?.bracket_generated ? (
@@ -253,13 +251,13 @@ function Row({ k, v }: { k: string; v: string }) {
 }
 
 const styles = StyleSheet.create({
-  hero: { minHeight: 280, justifyContent: 'space-between' },
-  back: { alignSelf: 'flex-start', margin: spacing.lg, backgroundColor: 'rgba(7,9,13,0.6)', borderWidth: 1, borderColor: colors.borderBright, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
-  gamePill: { borderWidth: 1, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 3, backgroundColor: 'rgba(7,9,13,0.6)' },
-  livePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,63,94,0.18)', borderRadius: radius.pill, paddingRight: spacing.md, paddingLeft: 2 },
-  liveText: { color: colors.red, fontSize: typography.tiny, fontWeight: fontWeights.black, letterSpacing: 1 },
-  prizeCard: { borderColor: 'rgba(255,198,26,0.35)', overflow: 'hidden' },
-  title: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.black, letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 10 },
+  hero: { padding: spacing.xl, gap: spacing.lg },
+  back: { alignSelf: 'flex-start' },
+  gameLabel: { color: colors.textMuted, fontSize: typography.tiny, fontWeight: fontWeights.semibold, letterSpacing: 0.6, textTransform: 'uppercase' },
+  livePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(229,72,77,0.12)', borderRadius: radius.pill, paddingRight: spacing.sm, paddingVertical: 1 },
+  liveText: { color: colors.red, fontSize: typography.tiny, fontWeight: fontWeights.semibold },
+  prizeCard: {},
+  title: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold, letterSpacing: -0.3 },
   section: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.semibold },
   card: {
     backgroundColor: colors.surface,
@@ -270,9 +268,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   cardLabel: { color: colors.textMuted, fontSize: typography.tiny, letterSpacing: 1, textTransform: 'uppercase' },
-  big: { color: colors.gold, fontSize: typography.display, fontWeight: fontWeights.black, letterSpacing: -1 },
+  big: { color: colors.text, fontSize: typography.display, fontWeight: fontWeights.bold, letterSpacing: -1, fontVariant: ['tabular-nums'] },
   meta: { color: colors.textMuted, fontSize: typography.caption },
   meta2: { color: colors.textFaint, fontSize: typography.tiny },
   progressTrack: { alignSelf: 'stretch', height: 6, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: colors.cyan },
+  progressFill: { height: '100%', backgroundColor: colors.gold },
 });

@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
@@ -68,7 +67,7 @@ export function HostScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={{ padding: spacing.xl, gap: spacing.lg, paddingBottom: spacing.xxl }}>
         <Button label="‹ Back" variant="ghost" onPress={() => navigation.goBack()} style={{ alignSelf: 'flex-start', minHeight: 36, paddingVertical: spacing.xs }} />
         <View>
-          <Eyebrow color={colors.cyan}>Marketplace</Eyebrow>
+          <Eyebrow>Hosting</Eyebrow>
           <Text style={styles.title}>Host Studio</Text>
         </View>
         {error ? <Text style={{ color: colors.red, fontSize: typography.caption }}>{error}</Text> : null}
@@ -96,8 +95,7 @@ export function HostScreen({ navigation }: Props) {
           <>
             <FadeIn>
               <View style={styles.earnCard}>
-                <LinearGradient colors={['rgba(34,211,238,0.18)', 'rgba(255,198,26,0.08)', 'rgba(7,9,13,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
-                <Eyebrow color={colors.cyan}>Host earnings</Eyebrow>
+                <Eyebrow>Host earnings</Eyebrow>
                 <Text style={styles.big}>{pesewasToGhs(earnings?.earned_pesewas ?? 0)}</Text>
                 <View style={{ flexDirection: 'row', gap: spacing.lg }}>
                   <Stat label="Hosted" value={String(earnings?.hosted_count ?? 0)} />
@@ -129,14 +127,13 @@ export function HostScreen({ navigation }: Props) {
                 }}
               />
             ) : (
-              <Button label="+ New tournament" onPress={() => setCreating(true)} />
+              <Button label="New tournament" onPress={() => setCreating(true)} />
             )}
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-              <View style={{ width: 4, height: 18, backgroundColor: colors.gold, borderRadius: 2 }} />
               <Text style={styles.section}>My tournaments</Text>
             </View>
-            {mine.length === 0 ? <Text style={styles.meta}>Nothing published yet. Your first cup is one tap away.</Text> : null}
+            {mine.length === 0 ? <Text style={styles.meta}>No tournaments published yet.</Text> : null}
             {mine.map((t, i) => (
               <FadeIn key={t.id} delay={i * 50}>
                 <Pressable onPress={() => navigation.navigate('Tournament', { tournamentId: t.id })} style={({ pressed }) => [styles.row, { borderLeftColor: GAMES[t.game].accent }, pressed && { opacity: 0.85 }]}>
@@ -189,11 +186,9 @@ function ApplyCard({ status, note, limits, busy, onApply }: { status: HostStatus
   return (
     <FadeIn>
       <View style={styles.card}>
-        <LinearGradient colors={['rgba(255,198,26,0.14)', 'rgba(7,9,13,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <Text style={styles.h2}>Run your own cups. Get paid.</Text>
+        <Text style={styles.h2}>Host tournaments for your community</Text>
         <Text style={styles.meta}>
-          Bring your community — WhatsApp group, gaming centre, campus league — and host paid tournaments on ClashGH.
-          We handle payments, brackets, disputes and payouts.
+          Run paid tournaments for your WhatsApp group, gaming centre or campus league. ClashGH handles payments, brackets, disputes and payouts.
         </Text>
         <View style={{ gap: spacing.xs }}>
           <Bullet>You set the game, entry fee, lobby size, times and your cut (up to {limits?.host_cut_max_percent ?? 20}%).</Bullet>
@@ -291,10 +286,9 @@ function CreateForm({ limits, busy, onCancel, onSubmit }: {
 
         {/* Live money preview */}
         <View style={styles.preview}>
-          <LinearGradient colors={['rgba(255,198,26,0.12)', 'rgba(7,9,13,0)']} style={StyleSheet.absoluteFill} pointerEvents="none" />
-          <Eyebrow color={colors.gold}>If the lobby fills · {pesewasToGhs(preview.total)} collected</Eyebrow>
-          <Line k={`🥇 Champion (${preview.firstPct}%)`} v={pesewasToGhs(preview.first)} />
-          <Line k={`🥈 Runner-up (${preview.runnerupPct}%)`} v={pesewasToGhs(preview.runnerup)} />
+          <Eyebrow>If the lobby fills · {pesewasToGhs(preview.total)} collected</Eyebrow>
+          <Line k={`Champion (${preview.firstPct}%)`} v={pesewasToGhs(preview.first)} />
+          <Line k={`Runner-up (${preview.runnerupPct}%)`} v={pesewasToGhs(preview.runnerup)} />
           <View style={styles.hr} />
           <Line k="You earn" v={pesewasToGhs(preview.host)} color={colors.green} strong />
           <Line k="ClashGH fee" v={pesewasToGhs(preview.platform)} />
@@ -333,15 +327,15 @@ function CreateForm({ limits, busy, onCancel, onSubmit }: {
 
 function Chip({ label, active, accent = colors.gold, onPress }: { label: string; active: boolean; accent?: string; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={{ backgroundColor: active ? accent : colors.surfaceAlt, borderColor: active ? accent : colors.border, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 }}>
-      <Text style={{ color: active ? '#0A0C10' : colors.textMuted, fontSize: typography.caption, fontWeight: fontWeights.bold }}>{label}</Text>
+    <Pressable onPress={onPress} style={{ backgroundColor: active ? colors.text : colors.surfaceAlt, borderColor: active ? colors.text : colors.border, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 }}>
+      <Text style={{ color: active ? colors.bg : colors.textMuted, fontSize: typography.caption, fontWeight: fontWeights.semibold }}>{label}</Text>
     </Pressable>
   );
 }
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
     <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-      <Text style={{ color: colors.gold }}>▸</Text>
+      <Text style={{ color: colors.textFaint }}>•</Text>
       <Text style={[styles.meta, { flex: 1 }]}>{children}</Text>
     </View>
   );
@@ -364,13 +358,13 @@ function Stat({ label, value, color = colors.text }: { label: string; value: str
 }
 
 const styles = StyleSheet.create({
-  title: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.black, letterSpacing: -0.5 },
+  title: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.bold, letterSpacing: -0.5 },
   h2: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.bold },
   section: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.semibold },
-  card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md, overflow: 'hidden' },
-  earnCard: { backgroundColor: colors.surface, borderColor: 'rgba(34,211,238,0.35)', borderWidth: 1, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.sm, overflow: 'hidden' },
-  big: { color: colors.cyan, fontSize: 40, fontWeight: fontWeights.black, letterSpacing: -1, fontVariant: ['tabular-nums'] },
-  preview: { backgroundColor: colors.bg, borderColor: 'rgba(255,198,26,0.35)', borderWidth: 1, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm, overflow: 'hidden' },
+  card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.md },
+  earnCard: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.xl, padding: spacing.xl, gap: spacing.sm },
+  big: { color: colors.text, fontSize: 36, fontWeight: fontWeights.bold, letterSpacing: -1, fontVariant: ['tabular-nums'] },
+  preview: { backgroundColor: colors.bg, borderColor: colors.border, borderWidth: 1, borderRadius: radius.lg, padding: spacing.lg, gap: spacing.sm },
   hr: { height: 1, backgroundColor: colors.border },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderLeftWidth: 3, borderRadius: radius.md, padding: spacing.md },

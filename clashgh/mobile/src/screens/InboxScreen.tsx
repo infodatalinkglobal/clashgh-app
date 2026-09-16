@@ -78,7 +78,7 @@ export function InboxScreen({ navigation }: Props) {
                 <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
               </View>
               {item.body ? <Text style={styles.body}>{item.body}</Text> : null}
-              {linked ? <Text style={styles.link}>Open →</Text> : null}
+              {linked ? <Text style={styles.link}>Open</Text> : null}
             </Pressable>
             </FadeIn>
           );
@@ -89,8 +89,8 @@ export function InboxScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  h1: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.black, letterSpacing: -0.5, marginBottom: spacing.md },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: colors.border, borderLeftWidth: 3, borderLeftColor: colors.gold },
+  h1: { color: colors.text, fontSize: typography.title, fontWeight: fontWeights.bold, letterSpacing: -0.5, marginBottom: spacing.md },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: colors.border, },
   title: { flex: 1, color: colors.text, fontSize: typography.body, fontWeight: fontWeights.semibold },
   time: { color: colors.textFaint, fontSize: typography.tiny },
   body: { color: colors.textMuted, fontSize: typography.caption, lineHeight: 18 },

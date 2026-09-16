@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ImageBackground, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   ApiError,
@@ -13,7 +12,7 @@ import {
 } from '../services/api';
 import { Config } from '../config';
 import { useAuth } from '../store/AuthContext';
-import { Badge, Button, Confetti, Eyebrow, FadeIn, Screen, TextField } from '../components/ui';
+import { Badge, Button, FadeIn, GameTile, Screen, TextField } from '../components/ui';
 import { GAMES, colors, fontWeights, radius, spacing, typography } from '../theme';
 import { providerLabel, toLocalDisplay } from '../utils/phone';
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -199,18 +198,16 @@ export function JoinScreen({ navigation, route }: Props) {
           <View style={[styles.card, { padding: 0, overflow: 'hidden' }]}>
             {tournament ? (
               <>
-                <ImageBackground source={GAMES[tournament.game].art} style={{ height: 120, justifyContent: 'flex-end' }}>
-                  <LinearGradient colors={['rgba(7,9,13,0.1)', colors.surface]} style={StyleSheet.absoluteFill} />
-                  <View style={{ padding: spacing.lg, gap: spacing.xs }}>
-                    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                      <View style={{ borderWidth: 1, borderColor: GAMES[tournament.game].accent, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 2, backgroundColor: 'rgba(7,9,13,0.6)' }}>
-                        <Text style={{ color: GAMES[tournament.game].accent, fontSize: typography.tiny, fontWeight: fontWeights.bold, letterSpacing: 1 }}>{GAMES[tournament.game].label.toUpperCase()}</Text>
-                      </View>
+                <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center', padding: spacing.lg, paddingBottom: 0 }}>
+                  <GameTile code={GAMES[tournament.game].code} accent={GAMES[tournament.game].accent} size={44} />
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center' }}>
+                      <Text style={{ color: colors.textMuted, fontSize: typography.tiny, fontWeight: fontWeights.semibold, letterSpacing: 0.6, textTransform: 'uppercase' }}>{GAMES[tournament.game].label}</Text>
                       <Badge label={`${tournament.max_players} players`} />
                     </View>
                     <Text style={styles.title}>{tournament.title}</Text>
                   </View>
-                </ImageBackground>
+                </View>
                 <View style={{ padding: spacing.lg, gap: spacing.sm }}>
                 <Row k="Entry fee" v={fee} strong />
                 <Row k="1st place" v={pesewasToGhs(tournament.projection_if_full.first_prize_pesewas)} />
@@ -275,7 +272,7 @@ export function JoinScreen({ navigation, route }: Props) {
                       : `A ${fee} MoMo prompt is sent to ${profile?.phone ? toLocalDisplay(profile.phone) : 'your number'}. Enter your PIN to approve — this screen updates automatically.`}
                   </Text>
                   <View style={styles.countdown}>
-                    <Text style={{ color: colors.gold, fontSize: 40, fontWeight: fontWeights.black, fontVariant: ['tabular-nums'], textShadowColor: colors.goldGlow, textShadowRadius: 16 }}>
+                    <Text style={{ color: colors.text, fontSize: 36, fontWeight: fontWeights.bold, fontVariant: ['tabular-nums'] }}>
                       {secondsLeft === null ? '—' : `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`}
                     </Text>
                     <Text style={styles.meta2}>slot held · waiting for confirmation</Text>
@@ -308,9 +305,8 @@ export function JoinScreen({ navigation, route }: Props) {
 
           {step === 'paid' ? (
             <FadeIn style={{ gap: spacing.md, alignItems: 'center', paddingVertical: spacing.xl }}>
-              <Confetti />
               <Badge label="Payment confirmed" tone="green" />
-              <Text style={[styles.stepTitle, { fontSize: typography.title, color: colors.green }]}>You're in! 🎉</Text>
+              <Text style={[styles.stepTitle, { fontSize: typography.title }]}>You're in</Text>
               <Text style={[styles.meta, { textAlign: 'center' }]}>
                 Your {fee} entry is in escrow. The bracket is drawn when the lobby fills; your match room and
                 opponent's ID appear at kick-off{tournament ? ` (${relativeTime(tournament.starts_at)})` : ''}.
@@ -348,7 +344,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.sm,
   },
-  title: { color: colors.text, fontSize: typography.heading, fontWeight: fontWeights.black, textShadowColor: 'rgba(0,0,0,0.8)', textShadowRadius: 8 },
+  title: { color: colors.text, fontSize: typography.subheading, fontWeight: fontWeights.semibold },
   stepTitle: { color: colors.text, fontSize: typography.subheading, fontWeight: fontWeights.semibold },
   meta: { color: colors.textMuted, fontSize: typography.caption },
   meta2: { color: colors.textFaint, fontSize: typography.tiny },
