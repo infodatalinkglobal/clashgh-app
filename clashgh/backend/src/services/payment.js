@@ -45,13 +45,14 @@ export async function initiateEntryFeeCharge({ user, tournament }) {
       amountPesewas: tournament.entry_fee_pesewas,
       reference,
       metadata: { user_id: user.id, tournament_id: tournament.id },
+      callbackUrl: `${env.siteOrigin}/app/tournament/${tournament.id}`,
     });
     return {
       reference: data.reference ?? reference,
       channel: 'mobile_money',
       provider: user.momo_provider,
       amount_pesewas: tournament.entry_fee_pesewas,
-      authorization_url: data.authorization?.authorization_url ?? null,
+      authorization_url: data.authorization_url ?? null,
       note: 'Approve the charge on your phone to lock your spot',
     };
   }
@@ -261,16 +262,19 @@ export async function initiateTransferForTx(tx) {
     throw new Error(`Cannot transfer: user ${tx.user_id} has no verified phone`);
   }
   const name = user.username ?? user.email;
-  const recipient = await paystack.createTransferRecipient({
+  const recipientCode = await paystack.createTransferRecipient({
     name,
     phone: user.phone,
     provider: user.momo_provider,
   });
+  // Paystack transfer reference: 16 to 50 chars, [a-z0-9_-]. One per attempt
+  // so a retry after a failure is a new transfer, not a rejected duplicate.
+  const reference = `clashgh_${tx.type}_${tx.id.replace(/-/g, '').slice(0, 20)}_${tx.attempts ?? 0}`.toLowerCase();
   const data = await paystack.initTransfer({
-    recipient: recipient.recipient ?? recipient,
+    recipientCode,
     amountPesewas: tx.amount_pesewas,
-    reason: tx.type === 'refund' ? 'Entry fee refund' : 'Tournament prize',
-    metadata: { clashgh_tx: tx.id, tx_type: tx.type },
+    reason: tx.type === 'refund' ? 'ClashGH entry fee refund' : 'ClashGH tournament prize',
+    reference,
   });
   const transferCode = data.transfer_code;
   await pool.query('UPDATE public.transactions SET paystack_transfer_code = $2 WHERE id = $1', [

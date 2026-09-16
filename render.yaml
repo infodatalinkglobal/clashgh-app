@@ -71,3 +71,18 @@ services:
         sync: false            # admin panel origin, e.g. https://admin.clashgh.app
       - key: ANDROID_SHA256_FINGERPRINTS
         sync: false            # signing cert fingerprints for /.well-known/assetlinks.json (see clashgh/RELEASE.md)
+      # Baked into the web app at build time (npm run web:export). Must match the API.
+      - key: EXPO_PUBLIC_API_URL
+        value: https://clashgh.app/api
+      - key: EXPO_PUBLIC_AUTH_MODE
+        value: supabase
+      - key: EXPO_PUBLIC_PAYSTACK_MODE
+        value: live
+      - key: EXPO_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: EXPO_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
+        sync: false
+      - key: EXPO_NO_TELEMETRY
+        value: "1"

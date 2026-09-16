@@ -1,8 +1,55 @@
-# ClashGH release guide: Android build, Play Store, closed beta
+# ClashGH release guide: web launch first, Android later
 
 Everything here is done by a person with the accounts. Nothing in this file is automated.
 
-## 1. Android build with EAS
+The plan is to launch on the web only (https://clashgh.app, the player app at /app runs in
+the phone browser and can be added to the home screen), earn, and only then ship the Play
+Store app. Nothing in the code changes between the two; the app build is the same code.
+
+## 1. Web launch checklist
+
+Accounts and keys, in the order you will be waiting on them:
+
+1. Paystack Ghana business account, live keys, Mobile Money collections and transfers
+   enabled. This takes the longest (business registration, ID). Set
+   `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`,
+   `PAYSTACK_MODE=live`. Register the webhook URL `https://clashgh.app/api/paystack/webhook`
+   in the Paystack dashboard (Settings, API keys and webhooks). Turn off "Transfers OTP"
+   in Paystack preferences or payouts will sit waiting for a code.
+2. Supabase project: enable Google and Email (magic link) providers, add
+   `https://clashgh.app/app/auth/callback` to the redirect allow list, run migration
+   `002_supabase_auth_integration.sql`. Set `AUTH_PROVIDER=supabase`, `SUPABASE_URL`,
+   `SUPABASE_JWT_SECRET`, `DATABASE_URL` (Supabase Postgres, pooled connection string).
+   Mobile build env: `EXPO_PUBLIC_AUTH_MODE=supabase`, `EXPO_PUBLIC_SUPABASE_URL`,
+   `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`,
+   `EXPO_PUBLIC_API_URL=https://clashgh.app/api`, `EXPO_PUBLIC_PAYSTACK_MODE=live`
+   (these are baked in at `npm run web:export`, so set them in Render's build env).
+3. Resend account and a verified sending domain (clashgh.app): `MAIL_PROVIDER=resend`,
+   `RESEND_API_KEY`, `MAIL_FROM=ClashGH <no-reply@clashgh.app>`.
+4. Cloudinary free tier for score screenshots: `SCREENSHOT_STORAGE=cloudinary` and the
+   three `CLOUDINARY_*` keys.
+5. Render: create the blueprint from `render.yaml`, add the custom domains `clashgh.app`
+   and `www.clashgh.app`, set the DNS records it shows you (A record for the apex, CNAME
+   for www), then fill every `sync: false` env var. Set `SITE_LEGAL_NAME` to your
+   registered business name and `CORS_ORIGINS` to the admin panel URL.
+6. Admin panel: deploy `clashgh/admin` as a static site (Render static site or Netlify) at
+   `https://admin.clashgh.app` with `VITE_API_URL=https://clashgh.app/api`. Make your own
+   user an admin: `UPDATE public.users SET role='admin' WHERE email='you@...'`.
+
+The API refuses to boot in production if any of auth, payments, mail, screenshots, CORS or
+SITE_ORIGIN is still on a dev setting, and prints exactly what to fix.
+
+Smoke test on the live site before inviting anyone:
+
+- [ ] https://clashgh.app loads, /tournaments, /faq and /privacy render, /nope shows the 404 page.
+- [ ] /app: sign in with Google on a phone, set username, add your MoMo number (the name comes back from Paystack).
+- [ ] Add to home screen on an Android phone; the icon and splash are ClashGH, it opens at /app.
+- [ ] Create a 10 cedi 4 player cup from admin. Join it from your phone: the Paystack page opens in the same tab, you approve on the phone, you land back on the tournament page and it says "You're in" within a few seconds.
+- [ ] Cancel the cup from admin. The refund arrives on your MoMo. Ledger balanced.
+
+Then run the closed beta in section 3.
+
+## 2. Android app, when the web version is earning
 
 One time:
 
@@ -40,7 +87,7 @@ eas secret:create --scope project --name EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID --valu
 Add `clashgh://auth/callback` and `https://clashgh.app/app/auth/callback` to the Supabase
 Auth redirect allow list.
 
-## 2. Play Console
+### Play Console
 
 Google Play developer account (one time fee), then create the app with these answers:
 
@@ -98,7 +145,7 @@ Setup, the day before
 - [ ] Production API is up on https://clashgh.app with `NODE_ENV=production` (it will refuse to boot if any dev setting is left on).
 - [ ] Paystack is in live mode and the webhook URL `https://clashgh.app/api/paystack/webhook` is registered in the Paystack dashboard.
 - [ ] Your own MoMo number is set as an admin, and you have signed in to the admin panel.
-- [ ] Preview APK installed on four phones (at least one MTN, one Telecel or AirtelTigo).
+- [ ] Four phones (at least one MTN, one Telecel or AirtelTigo) with https://clashgh.app/app added to the home screen. No download needed.
 - [ ] Each tester has signed in with Google, set a username, and added their MoMo number (the app checks the name on the number with Paystack).
 
 The cup

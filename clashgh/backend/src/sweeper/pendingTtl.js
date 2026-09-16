@@ -1,5 +1,7 @@
 import { pool } from '../db/pool.js';
 import { env } from '../config/env.js';
+import { paystack } from '../services/paystack.js';
+import { settleChargeSuccess } from '../services/payment.js';
 
 /**
  * Pending-registration TTL reaper (runs ~every 60s).
@@ -20,6 +22,30 @@ export function startPendingTtlSweeper() {
     running = true;
     try {
       try {
+        // Live mode safety net: a player may have paid while the
+        // charge.success webhook was delayed or lost. Ask Paystack before
+        // releasing the slot; settle if it says success.
+        if (env.paystackMode === 'live') {
+          const { rows: stale } = await pool.query(
+            `SELECT payment_reference FROM public.registrations
+             WHERE payment_status = 'pending'
+               AND created_at <= now() - make_interval(mins => $1)
+               AND created_at > now() - interval '24 hours'
+             LIMIT 50`,
+            [env.registrationPendingTtlMinutes],
+          );
+          for (const r of stale) {
+            try {
+              const v = await paystack.verifyCharge(r.payment_reference);
+              if (v?.status === 'success') {
+                await settleChargeSuccess(r.payment_reference, v);
+                console.log(`[sweeper] settled ${r.payment_reference} from Paystack verify (webhook was missed)`);
+              }
+            } catch (err) {
+              console.error(`[sweeper] verify ${r.payment_reference} failed:`, err.message);
+            }
+          }
+        }
         const { rowCount } = await pool.query(
           `DELETE FROM public.registrations
            WHERE payment_status = 'pending'

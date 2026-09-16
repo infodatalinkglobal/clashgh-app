@@ -141,8 +141,11 @@ export function JoinScreen({ navigation, route }: Props) {
       // approves the USSD/push prompt on their phone; we keep polling.
       if (res.charge.authorization_url) {
         if (Platform.OS === 'web') {
-          // New tab: this tab keeps polling and flips to "paid" on its own.
-          window.open(res.charge.authorization_url, '_blank', 'noopener');
+          // Same tab: phones block popups and lose background tabs. Paystack
+          // sends the player back to /app/tournament/:id (callback_url),
+          // which shows "You're in" once the webhook settles; a pending
+          // payment can be resumed from that page if they come back early.
+          window.location.assign(res.charge.authorization_url);
         } else {
           try {
             const WebBrowser = await import('expo-web-browser');
@@ -285,7 +288,7 @@ export function JoinScreen({ navigation, route }: Props) {
                       label="Open payment page again"
                       variant="secondary"
                       onPress={() => {
-                        if (Platform.OS === 'web') window.open(charge.authorization_url as string, '_blank', 'noopener');
+                        if (Platform.OS === 'web') window.location.assign(charge.authorization_url as string);
                         else void import('expo-web-browser').then((wb) => wb.openBrowserAsync(charge.authorization_url as string));
                       }}
                     />

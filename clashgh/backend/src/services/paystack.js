@@ -17,16 +17,19 @@ import { env } from '../config/env.js';
  * (backend/test/mock-paystack.js) with zero code changes.
  */
 
+// Paystack telco codes for Ghana MoMo (GET /bank?currency=GHS&type=mobile_money).
+const MOMO_BANK_CODES = { mtn: 'MTN', vodafone: 'VOD', airteltigo: 'ATL' };
+
 const API_URL = () => env.paystackApiUrl.replace(/\/+$/, '');
 
-async function paystackCall(path, body) {
+async function paystackCall(path, body, method = 'POST') {
   const res = await fetch(`${API_URL()}${path}`, {
-    method: 'POST',
+    method,
     headers: {
       Authorization: `Bearer ${env.paystackSecretKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(body ?? {}),
+    body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok || json.status === false) {
@@ -40,15 +43,28 @@ async function paystackCall(path, body) {
  * echoed back by Paystack — it is the key the settle flow (webhook or
  * dev simulate) looks the registration up by.
  */
-export async function initCharge({ email, amountPesewas, reference, metadata }) {
-  return paystackCall('/v2/transaction/initialize', {
+export async function initCharge({ email, amountPesewas, reference, metadata, callbackUrl }) {
+  // POST /transaction/initialize: returns { authorization_url, access_code, reference }.
+  // channels limits Checkout to Mobile Money; callback_url brings the
+  // player back to the tournament page after they approve on the phone.
+  return paystackCall('/transaction/initialize', {
     email,
     amount: amountPesewas,
     currency: 'GHS',
-    channel: 'mobile_money',
+    channels: ['mobile_money'],
     reference,
+    callback_url: callbackUrl,
     metadata,
   });
+}
+
+/**
+ * Verify a charge by reference (GET /transaction/verify/:reference).
+ * Used by the sweeper as a safety net when a charge.success webhook is
+ * delayed or lost. Returns { status: 'success'|'failed'|'abandoned'|..., amount, currency }.
+ */
+export async function verifyCharge(reference) {
+  return paystackCall(`/transaction/verify/${encodeURIComponent(reference)}`, null, 'GET');
 }
 
 /**
@@ -57,7 +73,6 @@ export async function initCharge({ email, amountPesewas, reference, metadata }) 
  * Returns { account_name, account_number } — shown to the player so they
  * confirm the number is theirs before it is locked (replaces SMS OTP).
  */
-const MOMO_BANK_CODES = { mtn: 'MTN', vodafone: 'VOD', airteltigo: 'ATL' };
 export async function resolveMomoAccount({ phone, provider }) {
   const local = `0${phone.slice(4)}`; // +233XXXXXXXXX → 0XXXXXXXXX
   const qs = new URLSearchParams({ account_number: local, bank_code: MOMO_BANK_CODES[provider] });
@@ -73,13 +88,16 @@ export async function resolveMomoAccount({ phone, provider }) {
 
 /** Create a MoMo transfer recipient (name + E.164 phone). */
 export async function createTransferRecipient({ name, phone, provider }) {
-  return paystackCall('/transfer/recipients', {
-    name,
+  // POST /transferrecipient: Ghana MoMo recipients take a local number and
+  // the telco code (MTN, VOD, ATL). Returns { recipient_code, ... }.
+  const data = await paystackCall('/transferrecipient', {
     type: 'mobile_money',
-    phone,
-    channel: 'mobile_money',
-    provider,
+    name,
+    account_number: `0${phone.slice(4)}`, // +233XXXXXXXXX to 0XXXXXXXXX
+    bank_code: MOMO_BANK_CODES[provider],
+    currency: 'GHS',
   });
+  return data.recipient_code;
 }
 
 /**
@@ -87,14 +105,15 @@ export async function createTransferRecipient({ name, phone, provider }) {
  * Returns { transfer_code, ... }; status is tracked via webhooks
  * (transfer.pending / transfer.success / transfer.failed).
  */
-export async function initTransfer({ recipient, amountPesewas, reason, metadata }) {
-  return paystackCall('/transfer/initialize', {
+export async function initTransfer({ recipientCode, amountPesewas, reason, reference }) {
+  // POST /transfer: reference must be 16 to 50 chars of [a-z0-9_-].
+  return paystackCall('/transfer', {
     source: 'balance',
-    recipient,
+    recipient: recipientCode,
     amount: amountPesewas,
     currency: 'GHS',
     reason,
-    metadata,
+    reference,
   });
 }
 
@@ -116,4 +135,4 @@ export function verifyWebhookSignature(rawBody, signatureHeader) {
   return crypto.timingSafeEqual(given, want);
 }
 
-export const paystack = { initCharge, resolveMomoAccount, createTransferRecipient, initTransfer, verifyWebhookSignature };
+export const paystack = { initCharge, verifyCharge, resolveMomoAccount, createTransferRecipient, initTransfer, verifyWebhookSignature };

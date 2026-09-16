@@ -89,6 +89,7 @@ siteRouter.get('/', asyncHandler(async (req, res) => {
     <h2>Why players use ClashGH</h2>
     <div class="grid">
       <div class="card"><h3>Mobile Money in, Mobile Money out</h3><p class="meta">Pay the entry fee with MTN MoMo, Telecel Cash or AirtelTigo Money. Prizes are sent to the same number automatically after the final.</p></div>
+      <div class="card"><h3>Nothing to install</h3><p class="meta">Works in the browser on any Android or iPhone. Add it to your home screen and it opens like an app. Under 300 KB to load, fine on a 2 GB phone and mobile data.</p></div>
       <div class="card"><h3>Fixed prizes, no betting</h3><p class="meta">Every cup shows the entry fee and both prizes before you join. There are no odds and no wagers between players.</p></div>
       <div class="card"><h3>Fair results</h3><p class="meta">Both players submit a score screenshot. When they agree the match settles instantly; when they do not, a human reviews it.</p></div>
       <div class="card"><h3>Play on your schedule</h3><p class="meta">You and your opponent agree a match time inside a 24-hour window. No need to be online at a fixed kick-off.</p></div>
@@ -241,6 +242,7 @@ const faqItems = [
   ['What if we disagree on the score?', 'Both screenshots go to an admin who awards the match, orders a replay, or in serious cases cancels the tournament with full refunds. Nothing is paid out until the dispute is resolved.'],
   ['Can I change my Mobile Money number?', 'The number is locked once set because it is both how you pay and how you get paid. Contact support with proof of ownership if it must change.'],
   ['How old do I have to be?', '18 or older. Accounts found to belong to minors are closed and paid fees refunded.'],
+  ['Do I need to download an app?', 'No. ClashGH runs in your phone browser at clashgh.app. Sign in, join a cup and play. On Android you can add it to your home screen from the browser menu so it opens like an app. A Play Store app will come later.'],
   ['Can I run my own tournaments?', 'Yes. Verified players can apply to become a host, set their own entry fee and prizes within the platform limits, and earn a share of the fees. See the hosting page.'],
 ];
 const faqSchema = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqItems.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
@@ -408,7 +410,7 @@ siteRouter.get('/about', (req, res) => {
       <ol class="steps">
         <li>Money is never touched by a person. Fees go into escrow and prizes are paid by the system.</li>
         <li>Every number is public before you pay: entry fee, lobby size, both prizes, platform fee.</li>
-        <li>Low data, low-end phones first. The app is small and works on a 2 GB device.</li>
+        <li>Low data, low-end phones first. It runs in the browser, loads in under 300 KB and works on a 2 GB device.</li>
         <li>Skill only. No odds, no wagers, no side bets.</li>
       </ol>
       <h2>Company</h2>

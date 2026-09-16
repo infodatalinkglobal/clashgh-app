@@ -3,9 +3,10 @@
  * (Module 1E) with zero real money and zero real keys.
  *
  * Implements:
- *   POST /v2/transaction/initialize  — MoMo charge init (echoes our reference)
- *   POST /transfer/recipients        — MoMo recipient creation
- *   POST /transfer/initialize        — MoMo transfer (resolves via webhooks)
+ *   POST /transaction/initialize     : MoMo charge init (echoes our reference)
+ *   POST /transferrecipient          : MoMo recipient creation
+ *   GET  /transaction/verify/:ref    : charge verification
+ *   POST /transfer                   : MoMo transfer (resolves via webhooks)
  *   GET  /momo-approve?reference=…   — stands in for the phone approval screen
  *   GET  /momo-decline?reference=…   — stands in for a declined approval
  *
@@ -29,6 +30,8 @@ const SECRET = process.env.MOCK_PAYSTACK_SECRET || 'mock-paystack-secret';
 const API_WEBHOOK = process.env.MOCK_API_WEBHOOK || 'http://127.0.0.1:3000/api/paystack/webhook';
 
 let eventId = 0;
+const recipients = new Map();
+const approved = new Set();
 
 function sign(rawBody) {
   return crypto.createHmac('sha512', SECRET).update(rawBody).digest('base64');
@@ -55,37 +58,29 @@ const server = http.createServer((req, res) => {
       res.end(JSON.stringify({ status: status === 200, data, message: status === 200 ? 'ok' : 'error' }));
     };
 
-    if (req.url === '/v2/transaction/initialize') {
+    if (req.url === '/transaction/initialize') {
       const reference = json.reference ?? `CHRG_MOCK_${Date.now()}`;
-      console.log(`[mock-paystack] charge init ${reference} (${json.amount} ${json.currency} via ${json.channel})`);
+      console.log(`[mock-paystack] charge init ${reference} (${json.amount} ${json.currency} via ${(json.channels || []).join(',')})`);
       respond({
+        authorization_url: `http://127.0.0.1:${PORT}/momo-approve?reference=${reference}`,
+        access_code: `ACC_${reference}`,
         reference,
-        status: 'pending',
-        authorization: {
-          authorization_url: `http://127.0.0.1:${PORT}/momo-approve?reference=${reference}`,
-          approval: `MOMO_${reference}`,
-        },
-        channel: json.channel,
-        amount: json.amount,
       });
       return;
     }
 
-    if (req.url === '/transfer/recipients') {
-      const recipient = {
-        recipient_code: `REC_${Date.now()}_${Math.floor(Math.random() * 1e4)}`,
-        name: json.name,
-        phone: json.phone,
-        channel: json.channel,
-      };
-      console.log(`[mock-paystack] recipient created ${recipient.recipient_code} (${recipient.name})`);
-      respond({ recipient });
+    if (req.url === '/transferrecipient') {
+      const recipient_code = `RCP_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
+      recipients.set(recipient_code, json.name);
+      console.log(`[mock-paystack] recipient created ${recipient_code} (${json.name}, ${json.bank_code} ${json.account_number})`);
+      respond({ recipient_code, type: json.type, name: json.name, currency: json.currency });
       return;
     }
 
-    if (req.url === '/transfer/initialize') {
+    if (req.url === '/transfer') {
       const transferCode = `TRF_MOCK_${Date.now()}_${Math.floor(Math.random() * 1e4)}`;
-      const recipientName = json.recipient?.name ?? json.name ?? '';
+      if (!/^[a-z0-9_-]{16,50}$/.test(String(json.reference))) { respond({ message: 'invalid reference' }, 400); return; }
+      const recipientName = recipients.get(json.recipient) ?? '';
       const willFail = /fail/i.test(String(recipientName));
       console.log(
         `[mock-paystack] transfer ${transferCode} (${json.amount} ${json.currency})${willFail ? ' [will FAIL]' : ''}`,
@@ -99,9 +94,17 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    if (req.url.startsWith('/transaction/verify/')) {
+      const reference = decodeURIComponent(req.url.split('/transaction/verify/')[1]);
+      const status = approved.has(reference) ? 'success' : 'abandoned';
+      respond({ reference, status, amount: 0, currency: 'GHS', channel: 'mobile_money' });
+      return;
+    }
+
     if (req.url.startsWith('/momo-approve')) {
       const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
       const reference = url.searchParams.get('reference');
+      approved.add(reference);
       console.log(`[mock-paystack] user approved MoMo charge ${reference} on phone`);
       setTimeout(() => sendWebhook('charge.success', { reference, amount: 0 }), 40);
       res.writeHead(200, { 'Content-Type': 'text/plain' });
