@@ -90,6 +90,7 @@ export const env = {
   siteContactEmail: process.env.SITE_CONTACT_EMAIL || 'support@clashgh.app',
   siteContactPhone: process.env.SITE_CONTACT_PHONE || '',
   siteTwitterHandle: process.env.SITE_TWITTER_HANDLE || '',
+  rateLimitApiPerMinute: Number(process.env.RATE_LIMIT_API_PER_MINUTE ?? 300),
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
 
@@ -110,5 +111,20 @@ if (env.paystackMode === 'live') {
   const missing = ['PAYSTACK_SECRET_KEY', 'PAYSTACK_WEBHOOK_SECRET'].filter((k) => !process.env[k]);
   if (missing.length > 0) {
     throw new Error(`PAYSTACK_MODE=live requires: ${missing.join(', ')}`);
+  }
+}
+
+// Production guard rails: refuse to boot with dev-only settings, so a bad
+// Render env can never expose stub sign-in or stub payments to real users.
+if (env.nodeEnv === 'production') {
+  const problems = [];
+  if (env.authProvider !== 'supabase') problems.push('AUTH_PROVIDER must be supabase');
+  if (env.paystackMode !== 'live') problems.push('PAYSTACK_MODE must be live');
+  if (env.mailProvider === 'mock') problems.push('MAIL_PROVIDER must not be mock');
+  if (env.screenshotStorage !== 'cloudinary') problems.push('SCREENSHOT_STORAGE must be cloudinary (local disk is wiped on deploy)');
+  if (env.corsOrigins.length === 0) problems.push('CORS_ORIGINS must list the admin panel origin');
+  if (!/^https:\/\//.test(env.siteOrigin)) problems.push('SITE_ORIGIN must be an https URL');
+  if (process.env.ALLOW_UNSAFE_PRODUCTION !== '1' && problems.length > 0) {
+    throw new Error(`Refusing to start in production:\n  - ${problems.join('\n  - ')}\nSet ALLOW_UNSAFE_PRODUCTION=1 only for a throwaway staging instance.`);
   }
 }

@@ -11,6 +11,7 @@ import { tournamentRouter } from './routes/tournaments.js';
 import { matchRouter } from './routes/matches.js';
 import { devAuthRouter } from './routes/devAuth.js';
 import { devPayRouter } from './routes/devPay.js';
+import { perIp } from './middleware/rateLimit.js';
 import { hostsRouter } from './routes/hosts.js';
 import { paystackWebhookHandler } from './routes/webhooks.js';
 import { uploadsRouter, mountLocalScreenshotStatic } from './routes/uploads.js';
@@ -30,7 +31,10 @@ export function createApp() {
     app.post('/api/paystack/webhook', express.raw({ type: () => true }), paystackWebhookHandler);
   }
 
-  const jsonSmall = express.json();
+  // Global API ceiling per IP (generous; per-route limits below are the real guards).
+  app.use('/api', perIp({ windowMs: 60 * 1000, max: env.rateLimitApiPerMinute, name: 'api' }));
+
+  const jsonSmall = express.json({ limit: '64kb' });
   app.use((req, res, next) => (req.path === '/api/uploads/screenshot' ? next() : jsonSmall(req, res, next)));
 
   // CORS — needed by browser clients (Expo web preview in dev, the 3C

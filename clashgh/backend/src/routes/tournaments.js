@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { perUser } from '../middleware/rateLimit.js';
+const MIN = 60 * 1000;
 import { pool } from '../db/pool.js';
 import { env } from '../config/env.js';
 import { requireAuth, requireAdmin, requireVerified } from '../middleware/auth.js';
@@ -338,7 +340,7 @@ tournamentRouter.get('/:id/me', requireAuth, asyncHandler(async (req, res) => {
  * and initiates the entry-fee charge. One advisory lock per tournament
  * serializes joins so the lobby can never overfill under concurrency.
  */
-tournamentRouter.post('/:id/join', requireAuth, requireVerified, asyncHandler(async (req, res) => {
+tournamentRouter.post('/:id/join', requireAuth, requireVerified, perUser({ windowMs: 10 * MIN, max: 10, name: 'join' }), asyncHandler(async (req, res) => {
   const id = parseIdParam(req.params.id);
   if (req.user.is_banned) throw new ApiError(403, 'Your account is banned — you cannot join tournaments');
 

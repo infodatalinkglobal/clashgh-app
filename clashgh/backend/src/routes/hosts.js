@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { perUser } from '../middleware/rateLimit.js';
+const MIN = 60 * 1000;
 import { pool } from '../db/pool.js';
 import { env } from '../config/env.js';
 import { requireAuth, requireAdmin, requireVerified } from '../middleware/auth.js';
@@ -78,7 +80,7 @@ hostsRouter.get('/me/host', requireAuth, asyncHandler(async (req, res) => {
   });
 }));
 
-hostsRouter.post('/me/host/apply', requireAuth, requireVerified, asyncHandler(async (req, res) => {
+hostsRouter.post('/me/host/apply', requireAuth, requireVerified, perUser({ windowMs: 60 * MIN, max: 3, name: 'host-apply' }), asyncHandler(async (req, res) => {
   if (req.user.host_status === 'approved') throw new ApiError(409, 'You are already a host');
   if (req.user.host_status === 'suspended') throw new ApiError(403, 'Your host access is suspended — contact support');
   if (req.user.host_status === 'pending') throw new ApiError(409, 'Your application is already under review');
@@ -92,7 +94,7 @@ hostsRouter.post('/me/host/apply', requireAuth, requireVerified, asyncHandler(as
   res.status(201).json({ success: true, data: { host_status: 'pending' }, message: 'Application received — we review within 24 hours' });
 }));
 
-hostsRouter.post('/host/tournaments', requireAuth, requireVerified, requireHost, asyncHandler(async (req, res) => {
+hostsRouter.post('/host/tournaments', requireAuth, requireVerified, requireHost, perUser({ windowMs: 60 * MIN, max: 10, name: 'host-create' }), asyncHandler(async (req, res) => {
   const body = req.body || {};
   const limits = hostLimits();
   // Host cut is what remains after prizes; cap it so pools stay ≥ 80%.

@@ -854,3 +854,10 @@ Decisions (user): the two players agree on ONE time; either proposes, the other 
 - Performance: no source maps in the export; `scripts/precompress.mjs` writes .br/.gz siblings (1.2 MB -> 268 KB brotli) and the server serves them; site HTML is gzipped; hashed bundles immutable, shell no-store. `expo-linear-gradient` removed.
 - Env: `SITE_ORIGIN`, `SITE_LEGAL_NAME`, `SITE_CONTACT_EMAIL`, `SITE_CONTACT_PHONE`, `SITE_TWITTER_HANDLE`. render.yaml declares the custom domain (clashgh.app + www) and www->apex redirect happens in production; trailing slashes 301 to the canonical path.
 - Dev preview: `PASSTHROUGH=1 node scripts/web-preview-proxy.mjs` forwards everything to the API (site + app), same as production.
+
+## Addendum: production hardening, 2026-09-16
+
+- Rate limits (`src/middleware/rateLimit.js`, in-memory fixed window, standard `RateLimit-*` and `Retry-After` headers, envelope 429): global `/api` 300/min per IP (`RATE_LIMIT_API_PER_MINUTE`); per user: join 10/10min, result 20/10min, schedule 30/10min, screenshot upload 15/10min, PATCH /me 30/10min, MoMo set 5/10min, MoMo resolve 10/10min, host apply 3/h, host create 10/h; dev sign-in 30/min per IP. `RATE_LIMIT_DISABLED=1` is set by `npm test` for the flow suites; `test/ratelimit.test.mjs` covers the limiter itself.
+- JSON bodies capped at 64 KB (screenshot upload keeps its own 1 MB limit).
+- `src/config/env.js` refuses to start with `NODE_ENV=production` unless auth is supabase, Paystack is live, mail is not mock, screenshots are on Cloudinary, `CORS_ORIGINS` is set and `SITE_ORIGIN` is https. `ALLOW_UNSAFE_PRODUCTION=1` bypasses for staging only. Dev routes (`/api/dev/*`) were already unmounted in production.
+- Hosted cups now honour `HOST_MIN_ENTRY_PESEWAS` (₵5) rather than the official ₵10 floor.

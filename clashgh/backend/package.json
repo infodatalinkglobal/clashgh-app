@@ -10,7 +10,7 @@
     "migrate": "node scripts/migrate.mjs",
     "migrate:seed": "node scripts/migrate.mjs --seed",
     "migrate:check": "node scripts/migrate.mjs --check",
-    "test": "node --test test/money.test.mjs test/schedule.test.mjs"
+    "test": "RATE_LIMIT_DISABLED=1 node --test test/money.test.mjs test/schedule.test.mjs && node --test test/ratelimit.test.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

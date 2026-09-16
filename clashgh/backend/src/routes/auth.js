@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { pool } from '../db/pool.js';
 import { requireAuth } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
-import { rateLimit } from '../middleware/rateLimit.js';
+import { rateLimit, perUser } from '../middleware/rateLimit.js';
 import { toE164, detectProvider } from '../utils/phone.js';
 import { USERNAME_RE } from '../utils/validate.js';
 import { paystack } from '../services/paystack.js';
@@ -35,7 +35,7 @@ authRouter.get('/me', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 /** PATCH /api/me — update username (onboarding). */
-authRouter.patch('/me', requireAuth, asyncHandler(async (req, res) => {
+authRouter.patch('/me', perUser({ windowMs: 10 * MIN, max: 30, name: 'me-patch' }), requireAuth, asyncHandler(async (req, res) => {
   const { username } = req.body || {};
 
   // Contact number for match scheduling (optional; shown only to the
@@ -102,7 +102,7 @@ authRouter.post(
   }),
 );
 
-authRouter.put('/me/momo', requireAuth, asyncHandler(async (req, res) => {
+authRouter.put('/me/momo', requireAuth, perUser({ windowMs: 10 * MIN, max: 5, name: 'momo-set' }), asyncHandler(async (req, res) => {
   if (req.user.phone_verified) {
     throw new ApiError(409, 'Your MoMo number is already set — contact support to change it');
   }

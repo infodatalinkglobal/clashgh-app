@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { perIp } from '../middleware/rateLimit.js';
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db/pool.js';
 import { issueToken } from '../middleware/auth.js';
@@ -22,7 +23,7 @@ import { env } from '../config/env.js';
 export function devAuthRouter() {
   const router = Router();
 
-  router.post('/dev/auth/signin', asyncHandler(async (req, res) => {
+  router.post('/dev/auth/signin', perIp({ windowMs: 60 * 1000, max: 30, name: 'dev-signin' }), asyncHandler(async (req, res) => {
     if (env.authProvider !== 'stub' || env.nodeEnv === 'production') {
       throw new ApiError(404, 'Endpoint not found');
     }

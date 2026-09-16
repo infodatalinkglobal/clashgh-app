@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { perUser } from '../middleware/rateLimit.js';
+const MIN = 60 * 1000;
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,6 +29,7 @@ const MAX_BYTES = 600 * 1024; // client target is 500KB; small headroom
 uploadsRouter.post(
   '/uploads/screenshot',
   requireAuth,
+  perUser({ windowMs: 10 * MIN, max: 15, name: 'upload' }),
   express.json({ limit: '1mb' }),
   asyncHandler(async (req, res) => {
     const b64 = typeof req.body?.image_base64 === 'string' ? req.body.image_base64 : '';

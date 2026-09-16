@@ -1,4 +1,6 @@
 import { Router } from 'express';
+import { perUser } from '../middleware/rateLimit.js';
+const MIN = 60 * 1000;
 import { pool } from '../db/pool.js';
 import { requireAuth, requireVerified, optionalAuth } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
@@ -98,7 +100,7 @@ matchRouter.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
  * POST /api/matches/:id/schedule  { action: 'propose', at } | { action: 'accept' }
  * Players agree on one time; see services/matches.js scheduleMatch.
  */
-matchRouter.post('/:id/schedule', requireAuth, requireVerified, asyncHandler(async (req, res) => {
+matchRouter.post('/:id/schedule', requireAuth, requireVerified, perUser({ windowMs: 10 * MIN, max: 30, name: 'schedule' }), asyncHandler(async (req, res) => {
   const id = parseIdParam(req.params.id);
   const result = await scheduleMatch({ matchId: id, userId: req.user.id, action: req.body?.action, at: req.body?.at });
   res.json({
@@ -111,6 +113,7 @@ matchRouter.post('/:id/schedule', requireAuth, requireVerified, asyncHandler(asy
 matchRouter.post(
   '/:id/result',
   requireAuth,
+  perUser({ windowMs: 10 * MIN, max: 20, name: 'result' }),
   asyncHandler(async (req, res) => {
     const id = parseIdParam(req.params.id);
     const result = await submitResult({
