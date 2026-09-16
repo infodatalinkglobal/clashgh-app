@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { createPublicKey } from 'node:crypto';
 import { env } from '../config/env.js';
 import { pool } from '../db/pool.js';
 import { ApiError } from './errorHandler.js';
@@ -15,12 +16,61 @@ import { ApiError } from './errorHandler.js';
  * claim in a JWT is meaningless here.
  */
 
-export function verifyToken(token) {
-  return jwt.verify(token, env.jwtSecret, {
-    algorithms: ['HS256'],
-    audience: 'authenticated',
-    issuer: env.jwtIssuer,
-  });
+// ---------------------------------------------------------------------------
+// JWKS (asymmetric Supabase keys). Fetched lazily, cached for an hour, and
+// refetched once when a token arrives with an unknown kid (key rotation).
+// ---------------------------------------------------------------------------
+const JWKS_TTL_MS = 60 * 60 * 1000;
+let jwksCache = { keys: new Map(), fetchedAt: 0 };
+
+async function loadJwks(force = false) {
+  if (!force && Date.now() - jwksCache.fetchedAt < JWKS_TTL_MS && jwksCache.keys.size > 0) return jwksCache.keys;
+  const url = `${env.supabaseUrl}/auth/v1/.well-known/jwks.json`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+  if (!res.ok) throw new Error(`JWKS fetch failed: HTTP ${res.status}`);
+  const body = await res.json();
+  const keys = new Map();
+  for (const jwk of body.keys || []) {
+    if (!jwk.kid) continue;
+    keys.set(jwk.kid, createPublicKey({ key: jwk, format: 'jwk' }));
+  }
+  jwksCache = { keys, fetchedAt: Date.now() };
+  return keys;
+}
+
+async function publicKeyFor(kid) {
+  let keys = await loadJwks();
+  if (!keys.has(kid)) keys = await loadJwks(true);
+  const key = keys.get(kid);
+  if (!key) throw new Error(`Unknown signing key ${kid}`);
+  return key;
+}
+
+/** Test hook: preload keys so no network is needed. */
+export function _setJwksForTests(map) {
+  jwksCache = { keys: map, fetchedAt: Date.now() };
+}
+
+/**
+ * Verify a user token. Dispatches on the header alg:
+ *   ES256 / RS256  Supabase asymmetric keys via JWKS (default for new projects)
+ *   HS256          shared secret (dev stub, or legacy Supabase projects)
+ */
+export async function verifyToken(token) {
+  const decoded = jwt.decode(token, { complete: true });
+  if (!decoded?.header) throw Object.assign(new Error('Malformed token'), { name: 'JsonWebTokenError' });
+  const { alg, kid } = decoded.header;
+  const opts = { audience: 'authenticated', issuer: env.jwtIssuer };
+  if (alg === 'HS256') {
+    if (!env.jwtSecret) throw Object.assign(new Error('HS256 token but no shared secret configured'), { name: 'JsonWebTokenError' });
+    return jwt.verify(token, env.jwtSecret, { ...opts, algorithms: ['HS256'] });
+  }
+  if (alg === 'ES256' || alg === 'RS256') {
+    if (env.authProvider !== 'supabase') throw Object.assign(new Error('Asymmetric tokens not accepted in stub mode'), { name: 'JsonWebTokenError' });
+    const key = await publicKeyFor(kid);
+    return jwt.verify(token, key, { ...opts, algorithms: [alg] });
+  }
+  throw Object.assign(new Error(`Unsupported token alg ${alg}`), { name: 'JsonWebTokenError' });
 }
 
 export function issueToken(userId, email) {
@@ -59,7 +109,7 @@ export async function requireAuth(req, res, next) {
 
     let payload;
     try {
-      payload = verifyToken(token);
+      payload = await verifyToken(token);
     } catch (err) {
       throw new ApiError(401, err.name === 'TokenExpiredError' ? 'Session expired — sign in again' : 'Invalid token');
     }

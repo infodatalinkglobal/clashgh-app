@@ -28,12 +28,15 @@ if (authProvider !== 'stub' && authProvider !== 'supabase') {
 let jwtSecret;
 let jwtIssuer;
 if (authProvider === 'supabase') {
-  const missingSupabase = ['SUPABASE_URL', 'SUPABASE_JWT_SECRET'].filter((key) => !process.env[key]);
-  if (missingSupabase.length > 0) {
-    throw new Error(`AUTH_PROVIDER=supabase requires: ${missingSupabase.join(', ')}`);
+  // Projects created after October 2025 sign user tokens with an asymmetric
+  // key (ES256) published at <SUPABASE_URL>/auth/v1/.well-known/jwks.json;
+  // only SUPABASE_URL is needed. SUPABASE_JWT_SECRET is optional and covers
+  // older projects still on the legacy shared secret (HS256).
+  if (!process.env.SUPABASE_URL) {
+    throw new Error('AUTH_PROVIDER=supabase requires SUPABASE_URL');
   }
-  jwtSecret = process.env.SUPABASE_JWT_SECRET;
-  jwtIssuer = `${process.env.SUPABASE_URL}/auth/v1`;
+  jwtSecret = process.env.SUPABASE_JWT_SECRET || null;
+  jwtIssuer = `${process.env.SUPABASE_URL.replace(/\/+$/, '')}/auth/v1`;
 } else {
   if (!process.env.STUB_JWT_SECRET) {
     throw new Error('AUTH_PROVIDER=stub requires STUB_JWT_SECRET (set it in .env)');
@@ -50,6 +53,7 @@ export const env = {
   authProvider,
   jwtSecret,
   jwtIssuer,
+  supabaseUrl: (process.env.SUPABASE_URL || '').replace(/\/+$/, ''),
   // Notifications (3E): email + Expo push, both 'mock' in dev.
   mailProvider: process.env.MAIL_PROVIDER || 'mock',
   mailFrom: process.env.MAIL_FROM || 'ClashGH <no-reply@clashgh.app>',
