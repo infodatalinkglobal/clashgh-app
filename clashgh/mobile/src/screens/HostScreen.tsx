@@ -26,7 +26,7 @@ const CLOSE_IN_HOURS = [2, 6, 12, 24, 48];
 const START_AFTER_HOURS = [1, 2, 6, 12, 24];
 
 /**
- * Host Studio — the marketplace side of ClashGH.
+ * Host Studio: the marketplace side of ClashGH.
  *   none/pending/suspended → application card
  *   approved               → earnings, "new tournament" form with a live
  *                            money split preview, list of my tournaments
@@ -192,14 +192,14 @@ function ApplyCard({ status, note, limits, busy, onApply }: { status: HostStatus
         </Text>
         <View style={{ gap: spacing.xs }}>
           <Bullet>You set the game, entry fee, lobby size, times and your cut (up to {limits?.host_cut_max_percent ?? 20}%).</Bullet>
-          <Bullet>Players pay into ClashGH escrow — you never touch their money.</Bullet>
+          <Bullet>Players pay into ClashGH escrow. You never handle their money.</Bullet>
           <Bullet>After the final, your cut is split {hostPct}/{limits?.platform_commission_percent ?? 50} with ClashGH and sent to your MoMo.</Bullet>
         </View>
         {status === 'pending' ? (
           <>
             <Badge label="Application under review" tone="gold" />
             {note ? <Text style={styles.meta2}>“{note}”</Text> : null}
-            <Text style={styles.meta2}>We usually answer within 24 hours. You'll get an email and a notification.</Text>
+            <Text style={styles.meta2}>Applications are reviewed within 24 hours. You will get an email and a notification.</Text>
           </>
         ) : status === 'suspended' ? (
           <>
@@ -252,7 +252,7 @@ function CreateForm({ limits, busy, onCancel, onSubmit }: {
   }, [fee, size, cut, limits.platform_commission_percent]);
 
   const feeError = fee < limits.min_entry_fee_pesewas ? `Minimum entry is ${pesewasToGhs(limits.min_entry_fee_pesewas)}` : null;
-  const prizeFloorError = preview.runnerup < 1000 ? 'Runner-up prize must reach ₵10 — raise the fee or lobby size' : null;
+  const prizeFloorError = preview.runnerup < 1000 ? 'Runner-up prize must reach ₵10. Raise the fee or lobby size.' : null;
   const canSubmit = title.trim().length >= 3 && !feeError && !prizeFloorError;
 
   return (

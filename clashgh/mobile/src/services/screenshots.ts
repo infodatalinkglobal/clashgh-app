@@ -7,7 +7,7 @@ import { endpoints } from './api';
  *   pick (gallery or camera) → resize to ≤1280px → JPEG, stepping the
  *   quality down until the payload is ≤ 500KB → upload → public URL.
  *
- * Storage is the backend's concern (local in dev, Cloudinary in 3D) — the
+ * Storage is the backend's concern (local in dev, Cloudinary in 3D): the
  * app only ever receives a URL to attach to the result pick.
  */
 
@@ -68,7 +68,7 @@ export async function compressForUpload(img: PickedImage): Promise<CompressedIma
   } finally {
     ref.release();
   }
-  throw new Error('Could not shrink the screenshot under 500KB — try cropping to just the score');
+  throw new Error('Could not shrink the screenshot under 500KB. Try cropping to just the score');
 }
 
 /** Full pipeline → the URL to submit with the result pick. */

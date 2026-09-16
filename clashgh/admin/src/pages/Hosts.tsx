@@ -41,11 +41,11 @@ export function HostsPage() {
               <tr key={h.id}>
                 <td><b>{h.username ?? '(no username)'}</b><br /><span className="faint">{h.email}</span><br /><span className="mono faint">{h.phone ?? 'no MoMo'}</span></td>
                 <td><span className={`badge ${h.host_status === 'approved' ? 'green' : h.host_status === 'pending' ? 'gold' : 'red'}`}>{h.host_status}</span></td>
-                <td style={{ maxWidth: 320 }}><span className="faint">{h.host_note ?? '—'}</span></td>
+                <td style={{ maxWidth: 320 }}><span className="faint">{h.host_note ?? 'n/a'}</span></td>
                 <td>{h.hosted_count} hosted · {h.completed_count} done{h.cancelled_count ? ` · ${h.cancelled_count} cancelled` : ''}</td>
                 <td className="mono">{ghs(h.earned_pesewas)}</td>
                 <td className="mono"><b>{ghs(h.platform_commission_pesewas)}</b></td>
-                <td className="faint">{h.host_applied_at ? when(h.host_applied_at) : '—'}</td>
+                <td className="faint">{h.host_applied_at ? when(h.host_applied_at) : 'n/a'}</td>
                 <td className="row">
                   {h.host_status !== 'approved' ? <button className="btn s" disabled={act.busy === h.id} onClick={() => approve(h)}>Approve</button> : null}
                   {h.host_status !== 'suspended' ? <button className="btn s d" disabled={act.busy === h.id} onClick={() => suspend(h)}>Suspend</button> : null}

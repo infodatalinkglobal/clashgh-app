@@ -2,7 +2,7 @@
  * Ghana phone helpers (agent.md §3 canonical prefix list).
  *
  * Stored format: E.164 (+233XXXXXXXXX). Display format: 0XXXXXXXXX.
- * The backend applies the same list — the app mirrors it so the user
+ * The backend applies the same list: the app mirrors it so the user
  * sees the detected provider BEFORE submitting.
  */
 export type MomoProvider = 'mtn' | 'vodafone' | 'airteltigo';

@@ -4,7 +4,7 @@ import { useLoad } from '../lib/hooks';
 
 /**
  * Analytics (3F): the numbers that gate expansion (agent.md §1, §15 R1).
- * Everything is derived from transactions / matches / tournaments — no events table.
+ * Everything is derived from transactions / matches / tournaments: no events table.
  */
 export function AnalyticsPage() {
   const [days, setDays] = useState(30);
@@ -31,11 +31,11 @@ export function AnalyticsPage() {
       <div className="grid g4">
         <K l="Created" v={funnel.created} s={`${funnel.open_now} open now`} />
         <K l="Completed" v={funnel.completed} s="paid out" />
-        <K l="Avg time to fill" v={timing.avg_hours_to_fill ? `${timing.avg_hours_to_fill}h` : '—'} s="creation → last payment" />
-        <K l="Avg match length" v={timing.avg_match_minutes ? `${timing.avg_match_minutes}m` : '—'} s={`${timing.no_shows} no-show/deadline settlements`} />
+        <K l="Avg time to fill" v={timing.avg_hours_to_fill ? `${timing.avg_hours_to_fill}h` : 'n/a'} s="creation to last payment" />
+        <K l="Avg match length" v={timing.avg_match_minutes ? `${timing.avg_match_minutes}m` : 'n/a'} s={`${timing.no_shows} no-show/deadline settlements`} />
       </div>
 
-      <h2>Daily — collected (bars) and active paying players</h2>
+      <h2>Daily: collected (bars) and active paying players</h2>
       <div className="card">
         <div className="spark">{daily.map((d) => <i key={d.day} title={`${d.day}: ${ghs(d.collected)} in, ${ghs(d.paid_out)} out, ${d.active_players} players`} style={{ height: `${(d.collected / max) * 100}%` }} />)}</div>
         <div className="spark" style={{ height: 30, marginTop: 6 }}>{daily.map((d) => <i key={d.day} style={{ height: `${(d.active_players / activeMax) * 100}%`, background: 'var(--blue)' }} />)}</div>

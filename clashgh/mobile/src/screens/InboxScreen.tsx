@@ -64,7 +64,7 @@ export function InboxScreen({ navigation }: Props) {
         ListEmptyComponent={
           loading ? null : (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>{error ?? 'Nothing yet. Room codes, results and payouts will show up here.'}</Text>
+              <Text style={styles.emptyText}>{error ?? 'No messages yet. Room codes, results and payouts will show up here.'}</Text>
             </View>
           )
         }

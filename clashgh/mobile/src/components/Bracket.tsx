@@ -4,7 +4,7 @@ import type { BracketMatch, BracketPlayer, BracketView } from '../services/api';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 
 /**
- * Single-elimination bracket view — hand-rolled (agent.md §4: no heavy
+ * Single-elimination bracket view: hand-rolled (agent.md §4: no heavy
  * deps, APK < 15MB, must render on 2GB Tecno/Infinix devices).
  *
  * Layout: one column per round, scrolled horizontally. Each match card is

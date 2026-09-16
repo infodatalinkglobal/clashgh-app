@@ -22,8 +22,8 @@ const TYPE_META: Record<TransactionRow['type'], { label: string; sign: '+' | '�
 
 /**
  * Wallet (Module 2F). READ-ONLY: there is no in-app balance (agent.md §3).
- * Every row is money that moved between the player's MoMo and Paystack —
- * fees paid in, winnings and refunds paid out — with the payout status so
+ * Every row is money that moved between the player's MoMo and Paystack,
+ * fees paid in, winnings and refunds paid out: with the payout status so
  * a player can see "on its way" vs "sent" vs "failed, retrying".
  * Cached in memory across focus; last page kept when offline.
  */
@@ -106,7 +106,7 @@ export function WalletScreen({ navigation }: Props) {
         }
         renderItem={({ item }) => <TxRow tx={item} onPress={item.tournament_id ? () => navigation.navigate('Tournament', { tournamentId: item.tournament_id as string }) : undefined} />}
         ListEmptyComponent={
-          <Text style={styles.empty}>{loading ? 'Loading…' : 'No transactions yet — join a tournament to get started.'}</Text>
+          <Text style={styles.empty}>{loading ? 'Loading…' : 'No transactions yet. Join a tournament to get started.'}</Text>
         }
         ListFooterComponent={hasMore ? <Text style={[styles.meta2, { textAlign: 'center', marginTop: spacing.md }]}>Loading more…</Text> : null}
       />
@@ -126,7 +126,7 @@ function TxRow({ tx, onPress }: { tx: TransactionRow; onPress?: () => void }) {
         <Text style={styles.meta2}>
           {new Date(tx.created_at).toLocaleString()}
           {pending && tx.type !== 'entry_fee' ? ' · sending to MoMo…' : ''}
-          {failed ? (tx.attempts >= 3 ? ' · failed — support notified' : ` · retrying${tx.next_retry_at ? ' soon' : ''}`) : ''}
+          {failed ? (tx.attempts >= 3 ? ' · failed, support notified' : ` · retrying${tx.next_retry_at ? ' soon' : ''}`) : ''}
         </Text>
       </View>
       <View style={{ alignItems: 'flex-end', gap: 2 }}>

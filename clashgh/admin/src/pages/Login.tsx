@@ -18,7 +18,7 @@ export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
     setBusy(true);
     setError(null);
     try {
-      if (MODE !== 'stub') throw new Error('Supabase admin sign-in is configured in production builds (VITE_AUTH_MODE=supabase) — use the Supabase magic-link flow.');
+      if (MODE !== 'stub') throw new Error('Supabase admin sign-in is configured in production builds (VITE_AUTH_MODE=supabase). Use the Supabase magic-link flow.');
       const r = await api.devSignIn(email.trim());
       const t = r.access_token ?? r.token;
       if (!t) throw new Error('No token returned');
@@ -47,7 +47,7 @@ export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
         </div>
         {error ? <div className="err">{error}</div> : null}
         <button className="btn p" disabled={busy} style={{ width: '100%' }}>{busy ? 'Signing in…' : 'Sign in'}</button>
-        {MODE === 'stub' ? <p className="faint" style={{ marginBottom: 0 }}>Dev mode — the backend's AUTH_PROVIDER=stub issues the token. Seeded admin: admin@clashgh.dev</p> : null}
+        {MODE === 'stub' ? <p className="faint" style={{ marginBottom: 0 }}>Dev mode: the backend's AUTH_PROVIDER=stub issues the token. Seeded admin: admin@clashgh.dev</p> : null}
       </form>
     </div>
   );

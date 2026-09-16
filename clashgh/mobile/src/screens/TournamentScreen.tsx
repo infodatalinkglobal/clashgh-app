@@ -174,7 +174,7 @@ export function TournamentScreen({ navigation, route }: Props) {
             {/* Actions */}
             {reg?.payment_status === 'pending' ? (
               <Button
-                label="Finish payment →"
+                label="Finish payment"
                 onPress={() => navigation.navigate('Join', { tournamentId: t.id, resumeReference: reg.payment_reference, resumeDeadline: reg.payment_deadline })}
               />
             ) : !reg && t.can_join ? (
@@ -183,7 +183,7 @@ export function TournamentScreen({ navigation, route }: Props) {
 
             {myMatch && (myMatch.status === 'active' || myMatch.status === 'awaiting_results' || myMatch.status === 'disputed') ? (
               <Button
-                label={myMatch.status === 'active' ? 'Go to your match room →' : myMatch.status === 'disputed' ? 'View disputed match' : 'View match (awaiting result)'}
+                label={myMatch.status === 'active' ? 'Go to your match room' : myMatch.status === 'disputed' ? 'View disputed match' : 'View match (awaiting result)'}
                 onPress={() => navigation.navigate('Match', { matchId: myMatch.id })}
               />
             ) : null}
@@ -199,7 +199,7 @@ export function TournamentScreen({ navigation, route }: Props) {
                 onPressMatch={(m) => navigation.navigate('Match', { matchId: m.id })}
               />
             ) : t.status === 'cancelled' ? (
-              <Text style={styles.meta}>This tournament was cancelled — all paid entries were refunded.</Text>
+              <Text style={styles.meta}>This tournament was cancelled. All paid entries were refunded.</Text>
             ) : (
               <View style={[styles.card, { alignItems: 'center' }]}>
                 <Text style={styles.meta}>

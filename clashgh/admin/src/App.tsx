@@ -11,7 +11,7 @@ import { AnalyticsPage } from './pages/Analytics';
 import { AuditPage } from './pages/Audit';
 
 /**
- * ClashGH admin panel — hash-routed (no router dep), auth-gated on the
+ * ClashGH admin panel: hash-routed (no router dep), auth-gated on the
  * backend's role check (a player token gets 403 on every /admin route).
  */
 export type Route =

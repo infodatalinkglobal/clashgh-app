@@ -14,13 +14,13 @@ type Pick = 'won' | 'lost' | 'draw' | 'dispute';
 const PICKS: { key: Pick; label: string; sub: string; tone: 'green' | 'muted' | 'gold' | 'red' }[] = [
   { key: 'won', label: 'I won', sub: 'Opponent must pick "I lost" to confirm', tone: 'green' },
   { key: 'lost', label: 'I lost', sub: 'Confirms your opponent as the winner', tone: 'muted' },
-  { key: 'draw', label: 'Draw', sub: 'Both pick draw → admin decides (replay or award)', tone: 'gold' },
-  { key: 'dispute', label: 'Dispute', sub: 'Opponent cheated / no-show / wrong room → admin review', tone: 'red' },
+  { key: 'draw', label: 'Draw', sub: 'If both pick draw, an admin decides (replay or award)', tone: 'gold' },
+  { key: 'dispute', label: 'Dispute', sub: 'Opponent cheated, did not show, or wrong room: admin review', tone: 'red' },
 ];
 
 /**
  * Score Submit (Module 2E). Rule (agent.md §3): a result pick is ONLY
- * accepted with a screenshot attached — the API enforces it, the UI
+ * accepted with a screenshot attached: the API enforces it, the UI
  * makes it impossible to skip. Flow:
  *   1. pick screenshot (gallery / camera) → compressed ≤500KB preview
  *   2. choose won / lost / draw / dispute (+ reason for dispute)
@@ -82,8 +82,8 @@ export function SubmitResultScreen({ navigation, route }: Props) {
       });
       setDone(res);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409) setError(`${e.message} — go back to the match room to see the latest state.`);
-      else setError(e instanceof Error ? e.message : 'Submission failed — check your connection and try again');
+      if (e instanceof ApiError && e.status === 409) setError(`${e.message}. Go back to the match room to see the latest state.`);
+      else setError(e instanceof Error ? e.message : 'Submission failed. Check your connection and try again.');
     } finally {
       setBusy(null);
     }
@@ -101,11 +101,11 @@ export function SubmitResultScreen({ navigation, route }: Props) {
           <Text style={[styles.meta, { textAlign: 'center' }]}>
             {done.status === 'completed'
               ? won
-                ? 'Both results agree. You advance — check the bracket for your next match.'
-                : 'Both results agree. Thanks for playing fair.'
+                ? 'Both results agree. You advance. Check the bracket for your next match.'
+                : 'Both results agree. Match closed.'
               : done.status === 'disputed'
                 ? done.message ?? 'An admin will review both screenshots. Payouts are locked until then.'
-                : "Your pick and screenshot are saved. The match settles when your opponent submits — or automatically when the window closes."}
+                : "Your pick and screenshot are saved. The match settles when your opponent submits, or on its own when the window closes."}
           </Text>
         </View>
         <Button label="Back to match room" onPress={() => navigation.navigate('Match', { matchId })} />
@@ -121,14 +121,14 @@ export function SubmitResultScreen({ navigation, route }: Props) {
           <Text style={styles.title}>Submit result</Text>
           {m ? (
             <Text style={styles.meta}>
-              {m.tournament_title} · Round {m.match_round} · vs {opponent?.username ?? '—'}
+              {m.tournament_title} · Round {m.match_round} · vs {opponent?.username ?? 'n/a'}
             </Text>
           ) : null}
         </View>
 
         {error ? <Text style={{ color: colors.red, fontSize: typography.caption }}>{error}</Text> : null}
 
-        {/* Step 1 — screenshot */}
+        {/* Step 1: screenshot */}
         <View style={styles.card}>
           <Text style={styles.step}>1 · Screenshot of the final score</Text>
           {preview ? (
@@ -137,7 +137,7 @@ export function SubmitResultScreen({ navigation, route }: Props) {
               <Text style={styles.meta2}>Compressed to {Math.round(preview.bytes / 1024)}KB for upload</Text>
             </>
           ) : (
-            <Text style={styles.meta}>Required — the final score screen from the game. This is your proof; the admin sees both players' screenshots side by side if there's a disagreement.</Text>
+            <Text style={styles.meta}>Required. The final score screen from the game. This is your proof; if the results disagree, an admin compares both screenshots.</Text>
           )}
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <Button label={preview ? 'Change (gallery)' : 'Choose from gallery'} variant="secondary" busy={busy === 'pick'} onPress={() => void choose('gallery')} style={{ flex: 1 }} />
@@ -145,7 +145,7 @@ export function SubmitResultScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Step 2 — pick */}
+        {/* Step 2: pick */}
         <View style={styles.card}>
           <Text style={styles.step}>2 · Your result</Text>
           {PICKS.map((p) => (
@@ -171,7 +171,7 @@ export function SubmitResultScreen({ navigation, route }: Props) {
         </View>
 
         <Text style={styles.meta2}>
-          Once submitted, your pick is final. Payouts only happen when both results agree or an admin resolves the match — false claims lead to a ban.
+          Once submitted, your pick is final. Payouts only happen when both results agree or an admin resolves the match. False claims lead to a ban.
         </Text>
         <Button
           label={busy === 'submit' ? 'Uploading…' : 'Confirm & submit'}

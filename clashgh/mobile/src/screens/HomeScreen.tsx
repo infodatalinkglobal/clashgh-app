@@ -245,7 +245,7 @@ export function HomeScreen({ navigation }: Props) {
               ))}
             </View>
           ) : (
-            <Text style={styles.empty}>No tournaments in this list yet — check back soon.</Text>
+            <Text style={styles.empty}>No tournaments in this list right now.</Text>
           )
         }
       />

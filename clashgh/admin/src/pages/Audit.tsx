@@ -8,7 +8,7 @@ export function AuditPage() {
   return (
     <>
       <h1>Audit log</h1>
-      <div className="sub">Cancellations, dispute resolutions, payouts, bans — who did what, when.</div>
+      <div className="sub">Cancellations, dispute resolutions, payouts, bans. Who did what, and when.</div>
       <div className="card" style={{ padding: 0 }}>
         <table>
           <thead><tr><th>When</th><th>Admin</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>

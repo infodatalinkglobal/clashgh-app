@@ -32,7 +32,7 @@ function DisputeCard({ d, onDone }: { d: Dispute; onDone: () => void }) {
   const act = useAction();
   const [zoom, setZoom] = useState<string | null>(null);
   const award = (p: DisputePlayer) =>
-    act.run('award', () => api.resolve(d.id, { resolution: 'award', winner_id: p.id }), `Award this match to ${p.username}?${d.is_final ? ' This is the FINAL — champion and runner-up payouts will be sent immediately.' : ' They advance to the next round.'}`, `Awarded to ${p.username}`).then((ok) => ok && onDone());
+    act.run('award', () => api.resolve(d.id, { resolution: 'award', winner_id: p.id }), `Award this match to ${p.username}?${d.is_final ? ' This is the final. Champion and runner-up payouts will be sent immediately.' : ' They advance to the next round.'}`, `Awarded to ${p.username}`).then((ok) => ok && onDone());
   const replay = () => act.run('replay', () => api.resolve(d.id, { resolution: 'replay' }), 'Schedule a replay? Picks and screenshots are cleared and a new room code + result window issued.', 'Replay scheduled').then((ok) => ok && onDone());
   const refund = () => act.run('refund', () => api.resolve(d.id, { resolution: 'refund' }), `Cancel the WHOLE tournament "${d.title}" and refund every paid player? Use only when the match cannot be fairly decided or replayed.`, 'Tournament cancelled and refunded').then((ok) => ok && onDone());
 
@@ -43,10 +43,10 @@ function DisputeCard({ d, onDone }: { d: Dispute; onDone: () => void }) {
         <b className="click" style={{ cursor: 'pointer' }} onClick={() => go({ page: 'tournament', id: d.tournament_id })}>{d.title}</b>
         <span className="badge">{GAME[d.game]}</span>
         <span className="muted">Round {d.match_round} · Match {d.match_number}{d.is_final ? ' · FINAL' : ''}</span>
-        <span className="faint">room {d.room_code ?? '—'} · started {when(d.started_at)} · window closed {when(d.deadline_at)}</span>
+        <span className="faint">room {d.room_code ?? 'n/a'} · started {when(d.started_at)} · window closed {when(d.deadline_at)}</span>
         <span className="faint right">waiting {ago(d.updated_at)}</span>
       </div>
-      <div className="muted" style={{ marginBottom: 12 }}><b>Reason:</b> {d.dispute_reason ?? '—'}</div>
+      <div className="muted" style={{ marginBottom: 12 }}><b>Reason:</b> {d.dispute_reason ?? 'n/a'}</div>
 
       <div className="grid g2">
         {[d.player1, d.player2].map((p, i) => p ? <PlayerSide key={p.id} p={p} side={i + 1} onZoom={setZoom} onAward={() => award(p)} busy={!!act.busy} /> : <div key={i} className="card muted">No player</div>)}

@@ -12,7 +12,7 @@ const HEALTH: Record<Overview['lobby_health'][number]['health'], { label: string
   past_close: { label: 'Past close · not full', tone: 'red' },
 };
 
-/** "What needs me right now" — disputes, failed transfers, dying lobbies, money. */
+/** "What needs me right now": disputes, failed transfers, dying lobbies, money. */
 export function OverviewPage() {
   const { data, error, reload } = useLoad(() => api.overview(), [], 30_000);
   const act = useAction();
@@ -38,7 +38,7 @@ export function OverviewPage() {
       {disputes.length + failed_transfers.length + counts.lobbies_past_close === 0 ? <div className="card muted">Queue is empty.</div> : null}
       {disputes.length ? (
         <div className="card warn" style={{ marginBottom: 12 }}>
-          <div className="row" style={{ marginBottom: 8 }}><b>Disputed matches</b><span className="badge red">{disputes.length}</span><button className="btn s right" onClick={() => go({ page: 'disputes' })}>Open dispute queue →</button></div>
+          <div className="row" style={{ marginBottom: 8 }}><b>Disputed matches</b><span className="badge red">{disputes.length}</span><button className="btn s right" onClick={() => go({ page: 'disputes' })}>Open dispute queue</button></div>
           <table>
             <thead><tr><th>Tournament</th><th>Match</th><th>Players (picks)</th><th>Reason</th><th>Waiting</th></tr></thead>
             <tbody>
@@ -46,8 +46,8 @@ export function OverviewPage() {
                 <tr key={d.id} className="click" onClick={() => go({ page: 'disputes' })}>
                   <td>{d.title} <span className="badge">{GAME[d.game]}</span></td>
                   <td>R{d.match_round} M{d.match_number}</td>
-                  <td>{d.player1 ?? '—'} <span className="faint">({d.player1_pick ?? 'none'})</span> vs {d.player2 ?? '—'} <span className="faint">({d.player2_pick ?? 'none'})</span></td>
-                  <td className="muted">{d.dispute_reason ?? '—'}</td>
+                  <td>{d.player1 ?? 'n/a'} <span className="faint">({d.player1_pick ?? 'none'})</span> vs {d.player2 ?? 'n/a'} <span className="faint">({d.player2_pick ?? 'none'})</span></td>
+                  <td className="muted">{d.dispute_reason ?? 'n/a'}</td>
                   <td className="faint">{ago(d.updated_at)}</td>
                 </tr>
               ))}
@@ -76,7 +76,7 @@ export function OverviewPage() {
         </div>
       ) : null}
 
-      <h2>Lobby health <span className="faint" style={{ textTransform: 'none', letterSpacing: 0 }}>— open lobbies, soonest close first (R1)</span></h2>
+      <h2>Lobby health <span className="faint" style={{ textTransform: 'none', letterSpacing: 0 }}>open lobbies, soonest close first (R1)</span></h2>
       <div className="card">
         {lobby_health.length === 0 ? <div className="muted">No open lobbies. Create a tournament to keep players engaged.</div> : (
           <table>
@@ -116,7 +116,7 @@ export function OverviewPage() {
             <span className="badge">{a.action}</span><span className="muted">{a.entity_type}</span><span className="mono faint">{JSON.stringify(a.details)}</span><span className="faint right">{ago(a.created_at)}</span>
           </div>
         ))}
-        <div style={{ marginTop: 8 }}><a href="#/audit" className="faint">Full audit log →</a></div>
+        <div style={{ marginTop: 8 }}><a href="#/audit" className="faint">Full audit log</a></div>
       </div>
     </>
   );

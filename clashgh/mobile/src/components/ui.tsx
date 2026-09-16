@@ -34,7 +34,7 @@ export function Screen({
   );
 }
 
-/** Brand mark — a gold "clash" chevron + wordmark. Hand-rolled (no icon deps). */
+/** Brand mark: a gold "clash" chevron + wordmark. Hand-rolled (no icon deps). */
 export function Logo({ size = 44 }: { size?: number }) {
   return (
     <View style={{ alignItems: 'center', gap: spacing.sm }}>
@@ -136,7 +136,7 @@ export function Skeleton({ height = 16, width = '100%' as ViewStyle['width'], ra
   return <Animated.View style={[{ height, width, borderRadius: r, backgroundColor: colors.surfaceAlt, opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }, style]} />;
 }
 
-/** Live countdown to an ISO time — "02:14:09" or "Now". */
+/** Live countdown to an ISO time: "02:14:09" or "Now". */
 export function Countdown({ to, style, prefix = '' }: { to: string; style?: StyleProp<TextStyle>; prefix?: string }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);

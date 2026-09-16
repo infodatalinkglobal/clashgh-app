@@ -7,7 +7,7 @@ import { colors, fontWeights, spacing, typography } from '../theme';
 /**
  * Shown instead of the app when profile.is_banned. The backend rejects
  * every authenticated call except GET /me for banned accounts, so there is
- * nothing else the player could do here — explain and offer sign-out.
+ * nothing else the player could do here: explain and offer sign-out.
  */
 export function BannedScreen() {
   const { profile, signOut, busy } = useAuth();
@@ -18,7 +18,7 @@ export function BannedScreen() {
         Account suspended
       </Text>
       <Text style={{ color: colors.textMuted, fontSize: typography.body }}>
-        {profile?.username ? `${profile.username}, your` : 'Your'} ClashGH account has been suspended by an admin — usually
+        {profile?.username ? `${profile.username}, your` : 'Your'} ClashGH account has been suspended by an admin, usually
         after repeated result disputes or a fake screenshot.
       </Text>
       <Text style={{ color: colors.textMuted, fontSize: typography.body }}>

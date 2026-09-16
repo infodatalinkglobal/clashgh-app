@@ -126,9 +126,9 @@ export const api = {
   analytics: (days: number) => request<Analytics>(`/admin/analytics?days=${days}`),
 };
 
-export const ghs = (p: number | null | undefined) => (p === null || p === undefined ? '—' : `₵${(p / 100).toFixed(2)}`);
+export const ghs = (p: number | null | undefined) => (p === null || p === undefined ? 'n/a' : `₵${(p / 100).toFixed(2)}`);
 export const GAME: Record<Game, string> = { efootball: 'eFootball', fc_mobile: 'FC Mobile', codm: 'CODM', dls: 'DLS' };
-export const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '—');
+export const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : 'n/a');
 export const ago = (iso: string) => {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (m < 1) return 'just now';

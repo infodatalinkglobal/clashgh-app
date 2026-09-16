@@ -11,7 +11,7 @@ import { registerForPush, unregisterPush } from '../services/push';
 import { authService, setOnUnauthorized } from '../services/auth';
 
 /**
- * Session store — the single source of truth for auth state across the
+ * Session store: the single source of truth for auth state across the
  * app (agent.md §10: src/store). Kept as a lightweight React context:
  * the session is a small, rarely-changing object, so no state library.
  */
@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const p = await authService.bootstrap();
         if (!cancelled) setProfile(p);
       } catch {
-        // offline at launch — stay signed out of the UI; token persists
+        // offline at launch: stay signed out of the UI; token persists
       } finally {
         if (!cancelled) setInitializing(false);
       }
@@ -63,7 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setOnUnauthorized(async () => {
       setProfile(null);
-      setError('Your session expired — sign in again');
+      setError('Your session expired. Sign in again.');
     });
     return () => setOnUnauthorized(null);
   }, []);

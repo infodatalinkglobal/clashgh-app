@@ -21,7 +21,7 @@ export function TournamentPage({ id }: { id: string }) {
     <>
       <a href="#/tournaments" className="faint">‹ Tournaments</a>
       <div className="row"><h1>{t.title}</h1><span className="badge gold">{GAME[t.game]}</span><span className="badge">{t.status.replace('_', ' ')}</span></div>
-      <div className="sub">{ghs(t.entry_fee_pesewas)} × {t.max_players} · split {t.first_place_percent}/{t.runnerup_percent}/{100 - t.first_place_percent - t.runnerup_percent} · result window {t.result_window_minutes}m · closes {when(t.closes_at)} · kick-off {when(t.starts_at)} · by {t.created_by_username ?? '—'}</div>
+      <div className="sub">{ghs(t.entry_fee_pesewas)} × {t.max_players} · split {t.first_place_percent}/{t.runnerup_percent}/{100 - t.first_place_percent - t.runnerup_percent} · result window {t.result_window_minutes}m · closes {when(t.closes_at)} · kick-off {when(t.starts_at)} · by {t.created_by_username ?? 'n/a'}</div>
 
       <div className="row" style={{ marginBottom: 16 }}>
         {canCancel ? <button className="btn d" disabled={!!act.busy} onClick={() => act.run('cancel', () => api.cancelTournament(t.id), `Cancel and refund ${paid.length} paid player(s) (${ghs(collected)})?`, 'Cancelled + refunded').then(reload)}>Cancel + refund all</button> : null}
@@ -32,7 +32,7 @@ export function TournamentPage({ id }: { id: string }) {
       <div className="grid g4">
         <K l="Paid players" v={`${paid.length}/${t.max_players}`} />
         <K l="Collected" v={ghs(collected)} />
-        <K l="Paid out / refunded" v={ghs(out)} s={collected - out > 0 && t.status !== 'completed' ? `${ghs(collected - out)} in escrow` : collected === out && collected > 0 ? 'balanced ✓' : ''} />
+        <K l="Paid out / refunded" v={ghs(out)} s={collected - out > 0 && t.status !== 'completed' ? `${ghs(collected - out)} in escrow` : collected === out && collected > 0 ? 'balanced' : ''} />
         <K l="Prize pool" v={ghs(t.prize_pool_pesewas)} s={t.platform_fee_pesewas !== null ? `platform ${ghs(t.platform_fee_pesewas)}` : 'fixed at bracket generation'} />
       </div>
 
@@ -48,10 +48,10 @@ export function TournamentPage({ id }: { id: string }) {
                   <td>{m.player1_username ?? <span className="faint">TBD</span>}</td>
                   <td>{m.player2_username ?? <span className="faint">TBD</span>}</td>
                   <td><span className={`badge ${MT[m.status]}`}>{m.status.replace('_', ' ')}</span>{m.dispute_reason ? <div className="faint">{m.dispute_reason}</div> : null}</td>
-                  <td className="mono">{m.room_code ?? '—'}</td>
+                  <td className="mono">{m.room_code ?? 'n/a'}</td>
                   <td className="faint">{m.player1_pick ?? '·'} / {m.player2_pick ?? '·'}{m.player1_screenshot_url ? <> · <a href={m.player1_screenshot_url} target="_blank" rel="noreferrer">shot 1</a></> : null}{m.player2_screenshot_url ? <> · <a href={m.player2_screenshot_url} target="_blank" rel="noreferrer">shot 2</a></> : null}</td>
-                  <td>{m.winner_username ? <b>{m.winner_username}</b> : '—'}</td>
-                  <td className="faint">{m.started_at ? `${when(m.started_at)} → ${when(m.deadline_at)}` : '—'}</td>
+                  <td>{m.winner_username ? <b>{m.winner_username}</b> : 'n/a'}</td>
+                  <td className="faint">{m.started_at ? `${when(m.started_at)} to ${when(m.deadline_at)}` : 'n/a'}</td>
                 </tr>
               ))}
             </tbody>
@@ -66,7 +66,7 @@ export function TournamentPage({ id }: { id: string }) {
           <tbody>
             {registrations.map((r) => (
               <tr key={r.id}>
-                <td className="mono">{r.seed ?? '—'}</td>
+                <td className="mono">{r.seed ?? 'n/a'}</td>
                 <td>{r.username}{r.is_banned ? <span className="badge red" style={{ marginLeft: 6 }}>banned</span> : null}</td>
                 <td className="mono">{r.phone} <span className="faint">{r.momo_provider}</span></td>
                 <td className="mono">{r.game_uid}</td>

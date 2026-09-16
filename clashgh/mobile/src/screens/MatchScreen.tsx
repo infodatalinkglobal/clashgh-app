@@ -126,13 +126,13 @@ export function MatchScreen({ navigation, route }: Props) {
               <View style={styles.card}>
                 <Text style={styles.cardLabel}>Kick-off</Text>
                 {!m.player1 || !m.player2 ? (
-                  <Text style={styles.meta}>Waiting for the previous round to finish — your opponent will appear here.</Text>
+                  <Text style={styles.meta}>Waiting for the previous round to finish. Your opponent will appear here.</Text>
                 ) : null}
                 <Text style={styles.big}>{startsIn > 0 ? countdown(startsIn) : m.match_round > 1 ? 'When round ' + (m.match_round - 1) + ' completes' : 'Starting…'}</Text>
                 <Text style={styles.meta2}>
                   {m.match_round === 1
-                    ? `${new Date(m.tournament_starts_at).toLocaleString()} — the room code appears here at kick-off. Be online a few minutes early.`
-                    : 'Later rounds start as soon as every match of the previous round is done. Keep this screen handy.'}
+                    ? `${new Date(m.tournament_starts_at).toLocaleString()}. The room code appears here at kick-off. Be online a few minutes early.`
+                    : 'Later rounds start as soon as every match of the previous round is done. Keep this screen open.'}
                 </Text>
               </View>
             ) : null}
@@ -141,14 +141,14 @@ export function MatchScreen({ navigation, route }: Props) {
               <>
                 <View style={[styles.card, styles.roomCard]}>
                   <Eyebrow>Room code</Eyebrow>
-                  <Text selectable style={styles.roomCode}>{m.room_code ?? '——————'}</Text>
+                  <Text selectable style={styles.roomCode}>{m.room_code ?? 'Not yet'}</Text>
                   <Text style={styles.meta2}>Both players enter this code in the game to meet in the same room.</Text>
                 </View>
 
                 <View style={styles.card}>
                   <Text style={styles.cardLabel}>Result window</Text>
                   <Text style={[styles.big, deadlineIn !== null && deadlineIn < 5 * 60_000 && { color: colors.red }]}>
-                    {deadlineIn === null ? '—' : deadlineIn > 0 ? countdown(deadlineIn) : 'Closed'}
+                    {deadlineIn === null ? 'n/a' : deadlineIn > 0 ? countdown(deadlineIn) : 'Closed'}
                   </Text>
                   <Text style={styles.meta2}>
                     Play now and submit your score screenshot before the window closes.
@@ -162,12 +162,12 @@ export function MatchScreen({ navigation, route }: Props) {
                       <Badge label={`Your pick: ${me.pick.toUpperCase()}`} tone="gold" />
                       <Text style={styles.meta}>
                         {opponent?.pick
-                          ? 'Both results are in — settling…'
+                          ? 'Both results are in. Settling…'
                           : "Waiting for your opponent's result. If they don't submit before the window closes, the system settles it."}
                       </Text>
                     </View>
                   ) : (
-                    <Button label="Submit result →" onPress={() => navigation.navigate('SubmitResult', { matchId: m.id })} />
+                    <Button label="Submit result" onPress={() => navigation.navigate('SubmitResult', { matchId: m.id })} />
                   )
                 ) : null}
 
@@ -192,16 +192,16 @@ export function MatchScreen({ navigation, route }: Props) {
                   <>
                     <Text style={[styles.big, { color: colors.green }]}>You won</Text>
                     <Text style={styles.meta}>
-                      {m.tournament_status === 'completed' ? 'Champion — your payout is on its way to your MoMo.' : 'You advance to the next round. Check the bracket for your next opponent.'}
+                      {m.tournament_status === 'completed' ? 'You are the champion. Your payout is on its way to your MoMo.' : 'You advance to the next round. Check the bracket for your next opponent.'}
                     </Text>
                   </>
                 ) : iLost ? (
                   <>
                     <Text style={[styles.big, { color: colors.textMuted }]}>Eliminated</Text>
-                    <Text style={styles.meta}>{m.tournament_status === 'completed' ? 'Runner-up — your payout is on its way to your MoMo.' : 'Better luck in the next cup.'}</Text>
+                    <Text style={styles.meta}>{m.tournament_status === 'completed' ? 'Runner-up. Your payout is on its way to your MoMo.' : 'Better luck in the next cup.'}</Text>
                   </>
                 ) : (
-                  <Text style={styles.meta}>Winner: {[m.player1, m.player2].find((p) => p?.user_id === m.winner_id)?.username ?? '—'}</Text>
+                  <Text style={styles.meta}>Winner: {[m.player1, m.player2].find((p) => p?.user_id === m.winner_id)?.username ?? 'n/a'}</Text>
                 )}
                 <Button label="View bracket" variant="secondary" onPress={() => navigation.navigate('Tournament', { tournamentId: m.tournament_id })} />
               </View>
@@ -261,9 +261,9 @@ function Instructions() {
   const steps = [
     'Open the game and add your opponent using their in-game ID above.',
     'Create or join the friendly/room match with the room code.',
-    'Play the match. Screenshot the FINAL score screen — it is your proof.',
+    'Play the match. Screenshot the final score screen. That is your proof.',
     'Come back here and submit your result before the window closes.',
-    'Both results must agree. Disagreements go to an admin — no payout until resolved.',
+    'Both results must agree. Disagreements go to an admin and nothing is paid until it is resolved.',
   ];
   return (
     <View style={styles.card}>

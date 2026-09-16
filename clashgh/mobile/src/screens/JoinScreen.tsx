@@ -28,10 +28,10 @@ const GAME_LABELS: Record<GameType, string> = {
 
 /** What the player enters as their in-game ID, per game (agent.md §3 UIDs). */
 const UID_HINTS: Record<GameType, string> = {
-  efootball: 'Your eFootball User ID (Profile → top of screen)',
-  fc_mobile: 'Your FC Mobile Player ID (Settings → About)',
-  codm: 'Your CODM UID (Profile → under your name)',
-  dls: 'Your DLS Online ID (Profile → Online)',
+  efootball: 'Your eFootball User ID (Profile, top of screen)',
+  fc_mobile: 'Your FC Mobile Player ID (Settings, then About)',
+  codm: 'Your CODM UID (Profile, under your name)',
+  dls: 'Your DLS Online ID (Profile, then Online)',
 };
 
 type Step = 'details' | 'paying' | 'paid' | 'failed';
@@ -42,7 +42,7 @@ type Step = 'details' | 'paying' | 'paid' | 'failed';
  *      a PENDING registration + a Paystack MoMo charge.
  *   2. The player approves the MoMo prompt on their phone (live) or taps the
  *      dev "simulate" button (stub). We poll /tournaments/:id/me until the
- *      registration flips to `paid` — the webhook/settle is the only thing
+ *      registration flips to `paid`: the webhook/settle is the only thing
  *      that confirms money moved; the app never assumes success.
  *   3. Pending registrations expire after 10 minutes: a visible countdown
  *      mirrors the backend deadline. A previous pending registration can
@@ -89,7 +89,7 @@ export function JoinScreen({ navigation, route }: Props) {
   const secondsLeft = deadline ? Math.max(0, Math.floor((new Date(deadline).getTime() - now) / 1000)) : null;
   const expired = secondsLeft === 0;
 
-  // Poll my registration while paying — settles when the webhook lands.
+  // Poll my registration while paying: settles when the webhook lands.
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const checkStatus = useCallback(async () => {
     try {
@@ -99,13 +99,13 @@ export function JoinScreen({ navigation, route }: Props) {
         return true;
       }
       if (!registration) {
-        // Pending registration was reaped (expired) — let them start over.
+        // Pending registration was reaped (expired): let them start over.
         setStep('failed');
         setError('Your pending registration expired before payment was received.');
         return true;
       }
     } catch {
-      // transient — keep polling
+      // transient: keep polling
     }
     return false;
   }, [tournamentId]);
@@ -146,13 +146,13 @@ export function JoinScreen({ navigation, route }: Props) {
             const WebBrowser = await import('expo-web-browser');
             void WebBrowser.openBrowserAsync(res.charge.authorization_url);
           } catch {
-            // browser unavailable — the MoMo prompt still arrives on the phone
+            // browser unavailable: the MoMo prompt still arrives on the phone
           }
         }
       }
     } catch (e) {
       if (e instanceof ApiError && e.status === 409 && /pending registration/i.test(e.message)) {
-        // Already have a pending one — resume it.
+        // Already have a pending one: resume it.
         const { registration } = await endpoints.myRegistration(tournamentId).catch(() => ({ registration: null }));
         if (registration?.payment_status === 'pending') {
           setReference(registration.payment_reference);
@@ -178,8 +178,8 @@ export function JoinScreen({ navigation, route }: Props) {
       if (success) await checkStatus();
     } catch (e) {
       // A declined charge comes back as { success:false } (registration stays
-      // pending, still payable) — the client surfaces that as an ApiError.
-      if (!success) setError('Payment declined (simulated). Your slot is still held — you can approve again.');
+      // pending, still payable): the client surfaces that as an ApiError.
+      if (!success) setError('Payment declined (simulated). Your slot is still held, so you can approve again.');
       else setError(e instanceof Error ? e.message : 'Simulation failed');
     } finally {
       setBusy(false);
@@ -269,11 +269,11 @@ export function JoinScreen({ navigation, route }: Props) {
                   <Text style={styles.meta}>
                     {charge?.note && !isStub
                       ? charge.note
-                      : `A ${fee} MoMo prompt is sent to ${profile?.phone ? toLocalDisplay(profile.phone) : 'your number'}. Enter your PIN to approve — this screen updates automatically.`}
+                      : `A ${fee} MoMo prompt is sent to ${profile?.phone ? toLocalDisplay(profile.phone) : 'your number'}. Enter your PIN to approve. This screen updates on its own.`}
                   </Text>
                   <View style={styles.countdown}>
                     <Text style={{ color: colors.text, fontSize: 36, fontWeight: fontWeights.bold, fontVariant: ['tabular-nums'] }}>
-                      {secondsLeft === null ? '—' : `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`}
+                      {secondsLeft === null ? 'n/a' : `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`}
                     </Text>
                     <Text style={styles.meta2}>slot held · waiting for confirmation</Text>
                   </View>
@@ -290,7 +290,7 @@ export function JoinScreen({ navigation, route }: Props) {
                   ) : null}
                   {isStub ? (
                     <View style={styles.devBox}>
-                      <Text style={styles.meta2}>DEV MODE — no real money. Simulate the Paystack webhook:</Text>
+                      <Text style={styles.meta2}>Dev mode, no real money. Simulate the Paystack webhook:</Text>
                       <View style={{ flexDirection: 'row', gap: spacing.sm }}>
                         <Button label="Approve" busy={busy} onPress={() => void simulate(true)} style={{ flex: 1 }} />
                         <Button label="Decline" variant="secondary" busy={busy} onPress={() => void simulate(false)} style={{ flex: 1 }} />

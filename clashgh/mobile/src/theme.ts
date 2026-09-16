@@ -1,5 +1,5 @@
 /**
- * ClashGH theme — flat, dark, product-grade. One accent (gold), neutral
+ * ClashGH theme: flat, dark, product-grade. One accent (gold), neutral
  * surfaces, no gradients or glows. Per-game colours are used only as thin
  * identifiers (a 3px bar, a monogram tile), never as decoration.
  */

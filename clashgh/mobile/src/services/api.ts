@@ -61,7 +61,7 @@ class Client {
         body: body === undefined ? undefined : JSON.stringify(body),
       });
     } catch {
-      throw new ApiError(0, 'Cannot reach the ClashGH servers — check your connection');
+      throw new ApiError(0, 'Cannot reach the ClashGH servers. Check your connection.');
     }
 
     let json: Envelope<T> | null = null;
@@ -84,7 +84,7 @@ class Client {
 export const api = new Client();
 
 // ---------------------------------------------------------------------------
-// Models — mirrors of the verified backend payloads (1B/1C/1D/1F)
+// Models: mirrors of the verified backend payloads (1B/1C/1D/1F)
 // ---------------------------------------------------------------------------
 
 export type MomoProvider = 'mtn' | 'vodafone' | 'airteltigo';
@@ -294,7 +294,7 @@ export const endpoints = {
   me: () => api.request<{ profile: Profile }>('/me', { auth: true }),
   updateUsername: (username: string) =>
     api.request<{ username: string }>('/me', { method: 'PATCH', body: { username }, auth: true }),
-  // MoMo number (3E — no OTP: resolve the account name, then the player confirms once)
+  // MoMo number (3E: no OTP: resolve the account name, then the player confirms once)
   resolveMomo: (phone: string) =>
     api.request<{ phone: string; momo_provider: MomoProvider; account_name: string | null }>(
       '/me/momo/resolve',
@@ -387,7 +387,7 @@ export const endpoints = {
 
 /** Format pesewas as a cedi string, e.g. 12000 → "₵120.00". */
 export function pesewasToGhs(pesewas: number | null): string {
-  if (pesewas === null) return '—';
+  if (pesewas === null) return 'n/a';
   return `₵${(pesewas / 100).toFixed(2)}`;
 }
 

@@ -1,7 +1,7 @@
 /**
  * App configuration.
  *
- * EXPO_PUBLIC_* variables are inlined at bundle time — provide them in
+ * EXPO_PUBLIC_* variables are inlined at bundle time: provide them in
  * mobile/.env (see .env.example) or the build environment.
  *
  * The API base URL: on a physical Android device `10.0.2.2` reaches the
@@ -26,7 +26,7 @@ export const Config = {
   supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL ?? '',
   supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '',
 
-  /** Supabase-hosted Google OAuth client (Web ID) — used for the OAuth flow. */
+  /** Supabase-hosted Google OAuth client (Web ID): used for the OAuth flow. */
   googleWebClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
 
   /**
@@ -39,6 +39,6 @@ export const Config = {
   /** Deep link scheme the app registers (matches app.json). */
   deeplinkScheme: 'clashgh',
 
-  /** Polling cadence for match screens (agent.md §14: 30–60s, be modest). */
+  /** Polling cadence for match screens (agent.md §14: 30 to 60s, be modest). */
   matchPollMs: 30_000,
 };

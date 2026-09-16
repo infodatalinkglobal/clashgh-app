@@ -10,7 +10,7 @@ import { GAMES, colors, fontWeights, radius, spacing, typography } from '../them
  *
  * Primary: Google. Fallback: email magic link (no-GMS devices / Google
  * outages). In dev (stub) mode the Google button presents a clearly
- * labelled identity picker and the magic-link field signs in directly —
+ * labelled identity picker and the magic-link field signs in directly,
  * same backend contract as production, zero credentials needed.
  */
 export function SignInScreen() {
@@ -64,7 +64,7 @@ export function SignInScreen() {
           {isStub && showDevPicker ? (
             <View style={{ gap: spacing.md, backgroundColor: colors.surface, borderRadius: 10, padding: spacing.lg, borderWidth: 1, borderColor: colors.border }}>
               <Text style={{ color: colors.gold, fontSize: typography.caption, fontWeight: fontWeights.semibold }}>
-                DEV MODE — choose an identity (simulates Google sign-in)
+                Dev mode: choose an identity (simulates Google sign-in)
               </Text>
               <TextField
                 label="Email"
@@ -112,7 +112,7 @@ export function SignInScreen() {
           )}
 
           <Text style={{ color: colors.textFaint, fontSize: typography.tiny, textAlign: 'center' }}>
-            By continuing you agree to the ClashGH fair-play rules. No betting — entry fee and prize only.
+            By continuing you agree to the ClashGH fair-play rules. No betting. Entry fee and prize only.
           </Text>
           </FadeIn>
         </Screen>

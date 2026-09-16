@@ -13,7 +13,7 @@ export function TournamentsPage() {
   return (
     <>
       <div className="row"><h1>Tournaments</h1><button className="btn p right" onClick={() => setCreating((v) => !v)}>{creating ? 'Close' : '+ New tournament'}</button></div>
-      <div className="sub">v1: platform-hosted only — admins create, players join. Close time 24–48h keeps money from sitting (agent.md §1).</div>
+      <div className="sub">Admins and approved hosts create, players join. A close time of 24 to 48 hours keeps money from sitting.</div>
       {creating ? <CreateForm onCreated={() => { setCreating(false); void reload(); }} /> : null}
       <div className="tabs">{TABS.map((t) => <button key={t} className={`tab ${tab === t ? 'on' : ''}`} onClick={() => setTab(t)}>{t.replace('_', ' ')}</button>)}</div>
       {error && !data ? <div className="err">{error}</div> : null}
@@ -86,8 +86,8 @@ function CreateForm({ onCreated }: { onCreated: () => void }) {
         <div className="f"><label>Runner-up %</label><input type="number" min={1} max={99} value={f.runnerup} onChange={set('runnerup')} /></div>
       </div>
       <div className="row">
-        <span className="muted">If full: <b>{ghs(total)}</b> collected → 🥇 {ghs(first)} · 🥈 {ghs(ru)} · platform {ghs(platform)} ({platform >= 0 ? Math.round((platform / (total || 1)) * 100) : '—'}%)</span>
-        {!floorOk ? <span className="badge red">runner-up below ₵10.00 minimum — raise fee or size</span> : null}
+        <span className="muted">If full: <b>{ghs(total)}</b> collected · 1st {ghs(first)} · 2nd {ghs(ru)} · platform {ghs(platform)} ({platform >= 0 ? Math.round((platform / (total || 1)) * 100) : 'n/a'}%)</span>
+        {!floorOk ? <span className="badge red">runner-up below the ₵10.00 minimum, raise fee or size</span> : null}
         <button className="btn p right" disabled={!!act.busy || !floorOk || platform < 0}>Create</button>
       </div>
       {act.msg ? <div className={act.msg.ok ? 'ok' : 'err'}>{act.msg.text}</div> : null}

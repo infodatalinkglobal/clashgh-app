@@ -7,7 +7,7 @@ import { endpoints } from './api';
  *
  * Called once the player is signed in + onboarded. Asks for permission,
  * gets the Expo push token for this device and registers it with the
- * backend (PUT /api/me/push-token). Web has no push — silently no-op.
+ * backend (PUT /api/me/push-token). Web has no push: silently no-op.
  * Failures are swallowed: push is a convenience, never a blocker.
  *
  * expo-notifications / expo-device are imported lazily so the web bundle
@@ -75,6 +75,6 @@ export async function configureForegroundNotifications(): Promise<void> {
       }),
     });
   } catch {
-    // not available (Expo Go on some SDKs) — fine
+    // not available (Expo Go on some SDKs): fine
   }
 }

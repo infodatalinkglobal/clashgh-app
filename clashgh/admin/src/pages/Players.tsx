@@ -36,7 +36,7 @@ export function PlayersPage() {
             {(data?.players ?? []).map((p) => (
               <tr key={p.id}>
                 <td><b>{p.username ?? '(no username)'}</b> {p.role === 'admin' ? <span className="badge gold">admin</span> : null}{p.is_banned ? <span className="badge red">banned</span> : null}{p.flagged && !p.is_banned ? <span className="badge red">flagged</span> : null}<br /><span className="faint">{p.email}</span></td>
-                <td className="mono">{p.phone ?? '—'} <span className="faint">{p.momo_provider ?? ''}{!p.phone_verified ? ' · unverified' : ''}</span></td>
+                <td className="mono">{p.phone ?? 'n/a'} <span className="faint">{p.momo_provider ?? ''}{!p.phone_verified ? ' · unverified' : ''}</span></td>
                 <td>{p.matches_completed} played · {p.wins} won</td>
                 <td>{p.open_disputes + p.resolved_disputes} <span className="faint">({Math.round(Number(p.dispute_rate) * 100)}%)</span>{p.open_disputes ? <span className="badge red" style={{ marginLeft: 6 }}>{p.open_disputes} open</span> : null}</td>
                 <td>paid {ghs(p.fees_paid_pesewas)}<br /><span className="faint">won {ghs(p.winnings_pesewas)}</span></td>

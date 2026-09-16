@@ -9,7 +9,7 @@ import { api, ApiError, endpoints, type Profile } from './api';
  *
  * Two modes, selected by EXPO_PUBLIC_AUTH_MODE:
  *
- *  - 'stub' (dev): tokens come from the backend's /api/dev/auth/signin —
+ *  - 'stub' (dev): tokens come from the backend's /api/dev/auth/signin,
  *    the same JWT-stub format the 1B auth middleware verifies. The
  *    "Google" button presents an identity picker so the flow is fully
  *    testable with no Google credentials.
@@ -133,7 +133,7 @@ class AuthService {
     );
     await this.saveToken(data.token);
     const profile = await this.bootstrap(); // wires the token provider + loads /me once
-    if (!profile) throw new ApiError(401, 'Sign-in succeeded but the session could not be loaded — try again');
+    if (!profile) throw new ApiError(401, 'Sign-in succeeded but the session could not be loaded. Try again.');
     return profile;
   }
 
@@ -178,7 +178,7 @@ class AuthService {
       urlObj.hash.replace(/^#/, '').split('&').find((p) => p.startsWith('code='))?.slice(5);
     if (!code) throw new ApiError(0, 'The link did not contain a sign-in code');
     const { data, error } = await sb.auth.exchangeCodeForSession(code);
-    if (error || !data.session) throw new ApiError(0, 'Could not complete sign-in — try again');
+    if (error || !data.session) throw new ApiError(0, 'Could not complete sign-in. Try again.');
     await this.saveToken(data.session.access_token);
     const p = await this.bootstrap();
     if (!p) throw new ApiError(0, 'Sign-in result was not accepted');

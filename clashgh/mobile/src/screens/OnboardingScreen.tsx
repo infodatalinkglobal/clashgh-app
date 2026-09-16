@@ -12,7 +12,7 @@ import { detectProvider, isValidUsername, providerLabel, toE164, toLocalDisplay 
  * by a code: in live mode the backend resolves the registered account
  * name via Paystack so the player sees "MTN · KOFI MENSAH" before
  * confirming, and the first entry fee is approved on that very phone.
- * Set once, then locked — the same number pays and receives prizes.
+ * Set once, then locked: the same number pays and receives prizes.
  */
 export function OnboardingScreen() {
   const { profile, setProfileUsername, resolveMomo, saveMomo, busy, error, dismissError } = useAuth();
@@ -63,7 +63,7 @@ export function OnboardingScreen() {
         <View style={{ alignItems: 'flex-start' }}>
           <Logo size={36} />
           <Text style={{ color: colors.textMuted, fontSize: typography.caption, marginTop: spacing.sm }}>
-            Welcome{profile?.username ? `, ${profile.username}` : ''} — one quick step to start playing
+            Welcome{profile?.username ? `, ${profile.username}` : ''}. One quick step before you play.
           </Text>
         </View>
 
@@ -87,8 +87,8 @@ export function OnboardingScreen() {
               keyboardType="phone-pad"
               hint={
                 provider
-                  ? `${providerLabel(provider)} — this number pays entry fees and receives prizes`
-                  : 'Your Mobile Money number — the same number pays and receives'
+                  ? `${providerLabel(provider)}. This number pays entry fees and receives prizes`
+                  : 'Your Mobile Money number. The same number pays and receives.'
               }
               error={phoneError}
             />
