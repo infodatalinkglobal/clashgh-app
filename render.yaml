@@ -69,3 +69,5 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false            # admin panel origin, e.g. https://admin.clashgh.app
+      - key: ANDROID_SHA256_FINGERPRINTS
+        sync: false            # signing cert fingerprints for /.well-known/assetlinks.json (see clashgh/RELEASE.md)

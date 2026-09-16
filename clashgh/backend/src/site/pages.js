@@ -493,6 +493,19 @@ siteRouter.get('/humans.txt', (req, res) => {
   res.type('text/plain').send(`/* TEAM */\n${SITE.legalName}, ${SITE.city}, Ghana\nContact: ${SITE.email}\n\n/* SITE */\nStandards: HTML5, schema.org JSON-LD\nStack: Node.js, Express, PostgreSQL, React Native (Expo)\n`);
 });
 
+// Android App Links: lets https://clashgh.app/app/... open the installed app.
+// ANDROID_SHA256_FINGERPRINTS = comma separated SHA-256 fingerprints of the
+// signing keys (EAS: `eas credentials -p android`, plus the Play App Signing key).
+siteRouter.get('/.well-known/assetlinks.json', (req, res) => {
+  const prints = env.androidSha256Fingerprints;
+  res.set('Cache-Control', 'public, max-age=3600');
+  if (prints.length === 0) return res.json([]);
+  res.json([{
+    relation: ['delegate_permission/common.handle_all_urls'],
+    target: { namespace: 'android_app', package_name: env.androidPackage, sha256_cert_fingerprints: prints },
+  }]);
+});
+
 siteRouter.get('/.well-known/security.txt', (req, res) => {
   res.type('text/plain').send(`Contact: mailto:${SITE.email}\nPreferred-Languages: en\nCanonical: ${SITE.origin}/.well-known/security.txt\nExpires: ${new Date(Date.now() + 365 * 86400e3).toISOString()}\n`);
 });

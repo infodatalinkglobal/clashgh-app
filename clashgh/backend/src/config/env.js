@@ -90,6 +90,8 @@ export const env = {
   siteContactEmail: process.env.SITE_CONTACT_EMAIL || 'support@clashgh.app',
   siteContactPhone: process.env.SITE_CONTACT_PHONE || '',
   siteTwitterHandle: process.env.SITE_TWITTER_HANDLE || '',
+  androidPackage: process.env.ANDROID_PACKAGE || 'com.clashgh.app',
+  androidSha256Fingerprints: (process.env.ANDROID_SHA256_FINGERPRINTS || '').split(',').map((s) => s.trim().toUpperCase()).filter(Boolean),
   rateLimitApiPerMinute: Number(process.env.RATE_LIMIT_API_PER_MINUTE ?? 300),
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
