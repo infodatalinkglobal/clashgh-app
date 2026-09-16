@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "db: start (docker)", "type": "shell", "command": "docker compose up -d", "options": { "cwd": "${workspaceFolder}/clashgh" }, "problemMatcher": [] },
+    { "label": "db: migrate + seed", "type": "shell", "command": "npm run migrate:seed", "options": { "cwd": "${workspaceFolder}/clashgh/backend" }, "problemMatcher": [] },
+    { "label": "api: dev", "type": "shell", "command": "npm run dev", "options": { "cwd": "${workspaceFolder}/clashgh/backend" }, "isBackground": true, "problemMatcher": [] },
+    { "label": "admin: dev", "type": "shell", "command": "npm run dev", "options": { "cwd": "${workspaceFolder}/clashgh/admin" }, "isBackground": true, "problemMatcher": [] },
+    { "label": "mobile: web", "type": "shell", "command": "npx expo start --web", "options": { "cwd": "${workspaceFolder}/clashgh/mobile" }, "isBackground": true, "problemMatcher": [] },
+    { "label": "install all", "type": "shell", "command": "npm ci --prefix clashgh/backend && npm ci --prefix clashgh/admin && npm ci --prefix clashgh/mobile", "problemMatcher": [] },
+    { "label": "start everything", "dependsOn": ["api: dev", "admin: dev", "mobile: web"], "dependsOrder": "parallel", "problemMatcher": [] }
+  ]
+}

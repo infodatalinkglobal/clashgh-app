@@ -6,7 +6,10 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "migrate": "node scripts/migrate.mjs",
+    "migrate:seed": "node scripts/migrate.mjs --seed",
+    "migrate:check": "node scripts/migrate.mjs --check"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

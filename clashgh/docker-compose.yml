@@ -1,0 +1,21 @@
+# Local Postgres for development (matches backend/.env.example DATABASE_URL).
+#   docker compose up -d
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: clashgh-db
+    environment:
+      POSTGRES_USER: clashgh
+      POSTGRES_PASSWORD: clashgh
+      POSTGRES_DB: clashgh
+    ports:
+      - "5433:5432"
+    volumes:
+      - clashgh-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clashgh"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+volumes:
+  clashgh-pg:

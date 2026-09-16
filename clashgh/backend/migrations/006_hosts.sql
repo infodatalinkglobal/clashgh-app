@@ -33,4 +33,8 @@ CREATE INDEX IF NOT EXISTS tournaments_host_idx ON public.tournaments (host_id) 
 -- New money leg: the host's share paid out at completion.
 ALTER TYPE public.transaction_type ADD VALUE IF NOT EXISTS 'host_share';
 
+INSERT INTO public.schema_migrations (version, name)
+VALUES (6, 'hosts')
+ON CONFLICT (version) DO NOTHING;
+
 COMMIT;

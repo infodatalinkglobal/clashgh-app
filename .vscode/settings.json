@@ -1,0 +1,5 @@
+{
+  "files.exclude": { "**/node_modules": true, "**/web-dist": true, "**/.expo": true },
+  "search.exclude": { "**/node_modules": true, "**/web-dist": true, "**/package-lock.json": true },
+  "github.copilot.chat.codeGeneration.useInstructionFiles": true
+}

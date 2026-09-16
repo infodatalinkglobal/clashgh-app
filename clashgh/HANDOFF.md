@@ -18,9 +18,12 @@ Apply → admin approves · host cut ≤ 20% after prizes · **50/50** host/Clas
 paid via the same auto-MoMo pipeline · hosts create/cancel only · official cups unchanged.
 Env: `HOST_COMMISSION_PERCENT=50`, `HOST_CUT_MAX_PERCENT=20`, `HOST_MIN_ENTRY_PESEWAS=500`.
 
+## Local setup outside the sandbox
+See `clashgh/SETUP.md` (Docker Postgres, `npm run migrate:seed`, VS Code tasks, Copilot instructions in
+`.github/copilot-instructions.md`). The owner intends to continue in VS Code + Copilot with real keys.
+
 ## Open items / ideas for next session
-1. **Verify in the user's browser** that Account shows build stamp + "🎙️ Become a host"
-   (headless verified; user had a cached bundle). If still missing → trace tunnel caching.
+1. ~~Verify host button in the user's browser~~ ✅ confirmed 2026-09-16 (full apply→approve→publish loop).
 2. Host reputation on cards (cups completed, cancel rate) — data exists in `/admin/hosts`.
 3. Distinctive display font (expo-font + OFL face) for the esports look.
 4. Path to launch: Supabase + Render deploy, Paystack test keys e2e, Resend/Cloudinary keys,
