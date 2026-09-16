@@ -89,7 +89,7 @@ siteRouter.get('/', asyncHandler(async (req, res) => {
     <h2>Why players use ClashGH</h2>
     <div class="grid">
       <div class="card"><h3>Mobile Money in, Mobile Money out</h3><p class="meta">Pay the entry fee with MTN MoMo, Telecel Cash or AirtelTigo Money. Prizes are sent to the same number automatically after the final.</p></div>
-      <div class="card"><h3>Nothing to install</h3><p class="meta">Works in the browser on any Android or iPhone. Add it to your home screen and it opens like an app. Under 300 KB to load, fine on a 2 GB phone and mobile data.</p></div>
+      <div class="card"><h3>Nothing to install</h3><p class="meta">ClashGH is a website. It works in the browser on any Android or iPhone, loads in under 300 KB and is fine on a 2 GB phone and mobile data. Add it to your home screen to open it with one tap.</p></div>
       <div class="card"><h3>Fixed prizes, no betting</h3><p class="meta">Every cup shows the entry fee and both prizes before you join. There are no odds and no wagers between players.</p></div>
       <div class="card"><h3>Fair results</h3><p class="meta">Both players submit a score screenshot. When they agree the match settles instantly; when they do not, a human reviews it.</p></div>
       <div class="card"><h3>Play on your schedule</h3><p class="meta">You and your opponent agree a match time inside a 24-hour window. No need to be online at a fixed kick-off.</p></div>
@@ -173,7 +173,7 @@ siteRouter.get('/tournaments/:id', asyncHandler(async (req, res, next) => {
     ${matches.length ? `<h2>Bracket</h2><table><thead><tr><th>Round</th><th>Match</th><th>Players</th><th>Result</th></tr></thead><tbody>${matches.map((m) => `<tr><td>${m.match_round}</td><td>${m.match_number}</td><td>${esc(m.p1 ?? 'TBD')} vs ${esc(m.p2 ?? 'TBD')}</td><td>${m.winner ? `${esc(m.winner)} won` : esc(m.status.replace('_', ' '))}</td></tr>`).join('')}</tbody></table>` : ''}
     <h2>How entry works</h2>
     <ol class="steps">
-      <li>Open the cup in the app and enter your ${esc(g.name)} in-game ID.</li>
+      <li>Open the cup, sign in and enter your ${esc(g.name)} in-game ID.</li>
       <li>Approve the ${ghs(t.entry_fee_pesewas)} Mobile Money prompt on your phone. Your seat is held for 10 minutes while you pay.</li>
       <li>When ${t.max_players} players have paid, the bracket is drawn and you get your round 1 opponent.</li>
       <li>Agree a match time with your opponent, play, and submit a screenshot of the final score.</li>
@@ -242,7 +242,7 @@ const faqItems = [
   ['What if we disagree on the score?', 'Both screenshots go to an admin who awards the match, orders a replay, or in serious cases cancels the tournament with full refunds. Nothing is paid out until the dispute is resolved.'],
   ['Can I change my Mobile Money number?', 'The number is locked once set because it is both how you pay and how you get paid. Contact support with proof of ownership if it must change.'],
   ['How old do I have to be?', '18 or older. Accounts found to belong to minors are closed and paid fees refunded.'],
-  ['Do I need to download an app?', 'No. ClashGH runs in your phone browser at clashgh.app. Sign in, join a cup and play. On Android you can add it to your home screen from the browser menu so it opens like an app. A Play Store app will come later.'],
+  ['Do I need to download an app?', 'No. ClashGH is a website. Open it in the browser on your phone, sign in, join a cup and play. On Android you can add it to your home screen from the browser menu so it opens with one tap.'],
   ['Can I run my own tournaments?', 'Yes. Verified players can apply to become a host, set their own entry fee and prizes within the platform limits, and earn a share of the fees. See the hosting page.'],
 ];
 const faqSchema = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqItems.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
@@ -277,7 +277,7 @@ siteRouter.get('/how-it-works', (req, res) => {
     crumbs: [HOME_CRUMB, { href: '/how-it-works', label: 'How it works' }],
     body: `<ol class="steps">${steps.map(([n, t]) => `<li><strong>${esc(n)}.</strong> <span class="meta">${esc(t)}</span></li>`).join('')}</ol>
       <div class="notice">If the lobby never fills, or a dispute cannot be resolved fairly, every paid entry is refunded in full. Read the <a href="/refunds">refund policy</a>.</div>
-      <p style="margin-top:20px"><a class="cta" href="/app">Open the app</a> &nbsp; <a href="/tournaments">Browse tournaments</a></p>`,
+      <p style="margin-top:20px"><a class="cta" href="/app">Sign in and play</a> &nbsp; <a href="/tournaments">Browse tournaments</a></p>`,
     schema: [schema],
   }));
 });
@@ -293,7 +293,7 @@ siteRouter.get('/hosts', (req, res) => {
     body: `
       <h2>How hosting works</h2>
       <ol class="steps">
-        <li>Apply from the Account screen in the app. Applications are reviewed within 24 hours.</li>
+        <li>Apply from your Account page after signing in. Applications are reviewed within 24 hours.</li>
         <li>Publish a cup: choose the game, entry fee (minimum ${ghs(env.hostMinEntryPesewas)}), lobby size (4 to 64) and prize split.</li>
         <li>Players pay into ClashGH escrow. You never handle their money.</li>
         <li>After the final, your share is sent to your Mobile Money number alongside the prizes.</li>
@@ -302,7 +302,7 @@ siteRouter.get('/hosts', (req, res) => {
       <p class="meta">Players must receive at least ${100 - cap}% of the fees as prizes. The remainder is your cut, split ${share}/${100 - share} between you and ClashGH. Example: 16 players at ₵20 with a 70/10/20 split collects ₵320; the champion gets ₵224, the runner-up ₵32, you ₵32 and ClashGH ₵32.</p>
       <h2>What hosts can and cannot do</h2>
       <p class="meta">Hosts create and cancel their own cups (cancelling refunds every paid player). Disputes, payouts and refunds stay automated or with ClashGH admins, so players get the same protection in every cup.</p>
-      <p><a class="cta" href="/app">Apply in the app</a></p>`,
+      <p><a class="cta" href="/app/host">Apply to host</a></p>`,
   }));
 });
 
@@ -321,7 +321,7 @@ siteRouter.get('/rules', (req, res) => {
         <li><strong>Agree a time and keep it.</strong> Each match must be played within its 24-hour window. One reschedule per match. Missing the agreed time is a walkover for the present player.</li>
         <li><strong>Result window.</strong> Submit your result within the tournament's result window after the match starts. One "won" pick with no reply from the opponent stands at the deadline.</li>
         <li><strong>Disputes.</strong> Disagreements are reviewed by an admin using both screenshots. The admin's decision is final. False claims lead to a ban.</li>
-        <li><strong>Respect.</strong> Abuse of opponents, hosts or staff, in the app or on WhatsApp, leads to removal.</li>
+        <li><strong>Respect.</strong> Abuse of opponents, hosts or staff, on the site or on WhatsApp, leads to removal.</li>
       </ol>
       <p class="meta">Related: <a href="/refunds">refund policy</a>, <a href="/terms">terms of service</a>.</p>`,
   }));
@@ -394,7 +394,7 @@ siteRouter.get('/privacy', (req, res) => {
       <h2>Your rights</h2>
       <p class="meta">Under Ghana's Data Protection Act, 2012 (Act 843) you may ask for a copy of your data, correct it, or have your account deleted once you have no active tournament or pending payout. Email <a href="mailto:${esc(SITE.email)}">${esc(SITE.email)}</a>.</p>
       <h2>Cookies</h2>
-      <p class="meta">The website sets no tracking cookies. The app stores your session token on your device only.</p>`,
+      <p class="meta">No tracking cookies. Your sign-in session is stored in your browser only.</p>`,
   }));
 });
 
@@ -433,7 +433,7 @@ siteRouter.get('/contact', (req, res) => {
         <tr><th>Hours</th><td>Support answers within 24 hours, seven days a week. Payment and payout systems run automatically around the clock.</td></tr>
       </tbody></table>
       <h2>Before you write</h2>
-      <p class="meta">Payout or refund not arrived: check the Wallet screen in the app; failed transfers are retried automatically. Score dispute: it is already in the admin queue if the match shows "Under review". Hosting: read the <a href="/hosts">hosting page</a> first.</p>`,
+      <p class="meta">Payout or refund not arrived: check your Wallet page; failed transfers are retried automatically. Score dispute: it is already in the admin queue if the match shows "Under review". Hosting: read the <a href="/hosts">hosting page</a> first.</p>`,
     schema: [schema],
   }));
 });
@@ -487,7 +487,7 @@ ClashGH (${SITE.origin}) is operated by ${SITE.legalName} in ${SITE.city}, Ghana
 - Matches are scheduled by the two players inside a 24-hour window; one reschedule per match
 - Results need a final-score screenshot from both players; disagreements are reviewed by a human
 - Unfilled lobbies and cancelled tournaments are refunded in full
-- Player app: ${SITE.origin}/app (requires sign-in; not intended for crawling)
+- Signed-in area: ${SITE.origin}/app (requires sign-in; not intended for crawling)
 `);
 });
 
@@ -516,10 +516,10 @@ siteRouter.get('/.well-known/security.txt', (req, res) => {
 export function notFoundPage() {
   return page({
     title: 'Page not found',
-    description: 'That page does not exist on ClashGH. Find open tournaments, learn how it works, or open the player app.',
+    description: 'That page does not exist on ClashGH. Find open tournaments, learn how it works, or sign in to play.',
     path: '/404', h1: 'Page not found', noindex: true,
     body: `<div class="err"><p>The address may be mistyped, or the tournament may have been removed.</p>
       <p><a class="cta" href="/tournaments">See open tournaments</a> &nbsp; <a class="cta secondary" href="/">Go to the home page</a></p>
-      <p class="meta" style="margin-top:20px">Looking for the player app? <a href="/app">Open the app</a>. Need help? <a href="/contact">Contact support</a>.</p></div>`,
+      <p class="meta" style="margin-top:20px">Already a player? <a href="/app">Sign in</a>. Need help? <a href="/contact">Contact support</a>.</p></div>`,
   });
 }

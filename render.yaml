@@ -19,12 +19,13 @@ services:
     # then at your DNS provider create  A  @  -> 216.24.57.1  and
     # CNAME  www -> clashgh.onrender.com . Render issues TLS automatically.
     # SITE_ORIGIN below must match the domain (canonical URLs, sitemap, schema).
-    domains:
-      - clashgh.app
-      - www.clashgh.app
+    # domains: uncomment once you have bought a domain and set SITE_ORIGIN to it
+    # domains:
+    #   - clashgh.app
+    #   - www.clashgh.app
     envVars:
       - key: SITE_ORIGIN
-        value: https://clashgh.app
+        sync: false            # leave EMPTY until you own a domain: the API then uses Render's own https URL
       - key: SITE_LEGAL_NAME
         sync: false            # registered business name shown in footer, terms, schema
       - key: SITE_CONTACT_EMAIL

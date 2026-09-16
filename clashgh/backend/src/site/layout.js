@@ -190,7 +190,7 @@ ${schema.map((s) => `<script type="application/ld+json">${JSON.stringify(s)}</sc
   <div class="wrap">
     <a class="brand" href="/" aria-label="ClashGH home"><img src="/brand/icon-192.png" width="28" height="28" alt="ClashGH logo: three gold bars on a dark tile">ClashGH</a>
     <nav class="primary" aria-label="Main">${NAV.map((n) => `<a href="${n.href}"${current(n.href)}>${n.label}</a>`).join('')}</nav>
-    <a class="cta" href="/app">Open the app</a>
+    <a class="cta" href="/app">Sign in</a>
   </div>
 </header>
 <main>
