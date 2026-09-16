@@ -33,7 +33,7 @@ function hostLimits() {
   return {
     host_cut_max_percent: env.hostCutMaxPercent,
     platform_commission_percent: env.hostCommissionPercent,
-    min_entry_fee_pesewas: Math.max(env.hostMinEntryPesewas, env.minEntryFeePesewas),
+    min_entry_fee_pesewas: env.hostMinEntryPesewas,
     min_players: 4,
     max_players: 64,
   };
@@ -106,7 +106,7 @@ hostsRouter.post('/host/tournaments', requireAuth, requireVerified, requireHost,
   if (Number(body.entry_fee_pesewas) < limits.min_entry_fee_pesewas) {
     throw new ApiError(400, `Hosted tournaments need an entry fee of at least ${pesewasToGhsString(limits.min_entry_fee_pesewas)}`);
   }
-  const v = validateTournamentCreate({ ...body, first_place_percent: first, runnerup_percent: runnerup });
+  const v = validateTournamentCreate({ ...body, first_place_percent: first, runnerup_percent: runnerup }, { minEntryFeePesewas: limits.min_entry_fee_pesewas });
   const rules = typeof body.rules_text === 'string' ? body.rules_text.trim().slice(0, 600) || null : null;
   const { rows } = await pool.query(
     `INSERT INTO public.tournaments

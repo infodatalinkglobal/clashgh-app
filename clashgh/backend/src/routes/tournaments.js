@@ -41,7 +41,7 @@ function requireDate(value, name) {
   return new Date(time);
 }
 
-export function validateTournamentCreate(body) {
+export function validateTournamentCreate(body, { minEntryFeePesewas = env.minEntryFeePesewas } = {}) {
   const title = typeof body.title === 'string' ? body.title.trim() : '';
   if (title.length < 3 || title.length > 120) {
     throw new ApiError(400, 'Title must be 3-120 characters');
@@ -53,8 +53,8 @@ export function validateTournamentCreate(body) {
 
   const entryFee = requireNumber(body.entry_fee_pesewas, 'entry_fee_pesewas', { min: 1 });
   if (entryFee === null) throw new ApiError(400, 'entry_fee_pesewas is required (integer pesewas)');
-  if (entryFee < env.minEntryFeePesewas) {
-    throw new ApiError(400, `Entry fee must be at least ${pesewasToGhsString(env.minEntryFeePesewas)}`);
+  if (entryFee < minEntryFeePesewas) {
+    throw new ApiError(400, `Entry fee must be at least ${pesewasToGhsString(minEntryFeePesewas)}`);
   }
 
   const maxPlayers = requireNumber(body.max_players, 'max_players');
