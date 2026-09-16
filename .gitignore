@@ -8,3 +8,6 @@ node_modules/
 **/dist/
 .expo/
 uploads/
+# local secrets handed to the agent, never committed
+**/.supabase-token
+**/*.token
