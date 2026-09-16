@@ -1,39 +1,57 @@
-# ClashGH — session handoff (2026-09-15)
+# ClashGH handoff for VS Code (2026-09-16)
 
-Branch: `arena/01a0a65e-clashgh-app` · last commit `2a30173` · everything pushed, working tree clean.
+Branch `arena/01a0a65e-clashgh-app`, last commit `45b4015`, everything pushed, tree clean.
 
-## What exists
-- **Backend** (`clashgh/backend`): full API — auth, tournaments, brackets, Paystack MoMo (stub/live),
-  match flow, disputes, payouts w/ retries, notifications outbox (email+push), uploads, admin
-  dashboard, **community hosts** (migration 006). Serves the web app when `WEB_DIST` is set.
-- **Mobile/Web** (`clashgh/mobile`): Expo app, web is first-class (PWA, persistent session,
-  480px desktop frame). Esports redesign (theme, key art, animations). Screens: SignIn,
-  Onboarding, Home, Tournament, Join, Match, SubmitResult, Wallet, Inbox, Account, **Host Studio**.
-- **Admin** (`clashgh/admin`): Vite SPA — Overview, Tournaments, Disputes, Players, **Hosts**,
-  Analytics, Audit.
-- `render.yaml` at repo root — one Render service = API + web build.
+## Decision
+Launch as a website first. The public site is server rendered at `/`, the signed in part
+(tournaments, join and pay, matches, wallet, hosting) runs in the browser at `/app`. Same
+code becomes the Play Store and App Store apps later (see `RELEASE.md` section 2). Do not
+build native yet.
 
-## Marketplace model (decided)
-Apply → admin approves · host cut ≤ 20% after prizes · **50/50** host/ClashGH split ·
-paid via the same auto-MoMo pipeline · hosts create/cancel only · official cups unchanged.
-Env: `HOST_COMMISSION_PERCENT=50`, `HOST_CUT_MAX_PERCENT=20`, `HOST_MIN_ENTRY_PESEWAS=500`.
+## Get running in 10 minutes
+```bash
+git clone <repo> && cd clashgh-app && git checkout arena/01a0a65e-clashgh-app
+npm ci --prefix clashgh/backend && npm ci --prefix clashgh/admin && npm ci --prefix clashgh/mobile
+cd clashgh && docker compose up -d                       # Postgres on 5433
+cp backend/.env.example backend/.env                     # then edit: DATABASE_URL, STUB_JWT_SECRET, WEB_DIST=../mobile/web-dist
+cp mobile/.env.example mobile/.env                       # EXPO_PUBLIC_API_URL=/api for the web build
+cd backend && npm run migrate -- --seed && cd ..
+cd mobile && EXPO_NO_TELEMETRY=1 npm run web:export && cd ..
+cd backend && npm run dev                                # http://localhost:3000  (site at /, app at /app)
+cd admin && npm run dev                                  # http://localhost:5173  admin panel
+```
+VS Code tasks for each step are in `.vscode/tasks.json`. Copilot context is in
+`.github/copilot-instructions.md` and `agent.md` (the rules) plus its dated addenda at the end.
 
-## Local setup outside the sandbox
-See `clashgh/SETUP.md` (Docker Postgres, `npm run migrate:seed`, VS Code tasks, Copilot instructions in
-`.github/copilot-instructions.md`). The owner intends to continue in VS Code + Copilot with real keys.
+Dev sign in (no password): admin@clashgh.dev, kofi/ama/yao/efua/kwame/akos/nana/abena@dev.gh.
+nana is an approved host. Payments are stubbed: the join screen shows Approve / Decline buttons.
 
-## Open items / ideas for next session
-1. ~~Verify host button in the user's browser~~ ✅ confirmed 2026-09-16 (full apply→approve→publish loop).
-2. Host reputation on cards (cups completed, cancel rate) — data exists in `/admin/hosts`.
-3. Distinctive display font (expo-font + OFL face) for the esports look.
-4. Path to launch: Supabase + Render deploy, Paystack test keys e2e, Resend/Cloudinary keys,
-   `eas init` + phone build, money-path test suite, closed beta.
+Tests: `cd clashgh/backend && npm test` (money path 18, Paystack live path 2, rate limits 2).
 
-## Dev stack (sandbox may be recycled — rebuild if ports are dead)
-- Postgres: embedded, `/tmp/pg/start.mjs` (5433) — re-run migrations 001,003–006 + seeds if lost.
-- API: `cd clashgh/backend && node src/server.js` (3000).
-- Web preview: `cd clashgh/mobile && EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 npm run web:export` then set `WEB_DIST=../mobile/web-dist` in backend/.env and run
-  `PORT=8082 PASSTHROUGH=1 API_TARGET=http://localhost:3000 node scripts/web-preview-proxy.mjs` (site at /, app at /app).
-- Admin: `cd clashgh/admin && npm run dev -- --host 0.0.0.0 --port 5173`.
-- Seed logins (dev sign-in, any email below): admin@clashgh.dev, kofi/ama/yao/efua/kwame/akos/
-  nana/abena@dev.gh, newbie@dev.gh. `nana` is an approved host with one completed cup.
+## What is done
+Backend API, public SEO site, browser app, admin panel, community hosts (50/50 split, 20% cap,
+5 cedi hosted minimum), match scheduling (24 h window, propose/accept, one reschedule,
+walkover), notifications outbox (email + push), rate limits and production boot guards,
+Paystack client aligned with the current API and tested against a mock, Render blueprint.
+
+## What is left (accounts, not code)
+Owner answers so far: no domain yet (buying this week), Paystack test keys only, Google sign in,
+hosts open from day one, players mostly on phones.
+
+1. Paystack: business registration, then live keys and Mobile Money transfers enabled.
+   Until then run end to end against the TEST keys: set `PAYSTACK_MODE=live` with the
+   `sk_test_` key and `PAYSTACK_API_URL=https://api.paystack.co`; use ngrok for the webhook.
+2. Supabase project + Google OAuth client. `AUTH_PROVIDER=supabase`, run migration 002 there.
+3. Resend (email) and Cloudinary (screenshots) keys.
+4. Render from `render.yaml`; free `*.onrender.com` URL works with no domain (SITE_ORIGIN
+   falls back to RENDER_EXTERNAL_URL). When the domain arrives: set SITE_ORIGIN, uncomment
+   `domains:` in render.yaml, add the two DNS records.
+5. Set `SITE_LEGAL_NAME` to the registered business name.
+6. Closed beta: `RELEASE.md` section 3.
+
+Full checklist with every env var: `RELEASE.md` section 1.
+
+## Conventions (short)
+snake_case JSON, integer pesewas, `{ success, data, message }` envelope, no heavy deps,
+no dashes or emoji in user facing text, neutral dark theme with gold accent, no gradients.
+Commit small, run `npm test` before pushing.
