@@ -576,6 +576,7 @@ MIN_PRIZE_PESOWAS=1000
 - Mobile: Test on actual low-end Android device or emulator configured with limited RAM
 - Admin: Browser testing, responsive design verification
 - Pre-launch soak test: run a full simulated tournament (join → pay → bracket → matches → payout) in Paystack test mode end-to-end
+- **Automated money-path suite** (2026-09-16): `cd backend && npm test` — `test/money.test.mjs` boots the real API against a throwaway `clashgh_test` database and plays official, hosted, cancelled, disputed, refunded, late-payment and replayed-webhook scenarios over HTTP, asserting fees in = prizes + host + platform (or refunds) to the pesewa, then runs `runMoneyInvariantCheck()`. Run it before every commit that touches `services/payment.js`, `cancel.js`, `matches.js`, `bracket.js`, `utils/prize.js` or the hosts routes.
 
 ---
 

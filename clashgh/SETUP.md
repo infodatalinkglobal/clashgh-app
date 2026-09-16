@@ -154,3 +154,11 @@ Suggested prompt once your keys are in hand:
 
 Copilot should never need your keys in chat beyond writing them into `.env`; if it suggests
 committing them or pasting them into source files, refuse.
+
+## Tests (money path)
+
+```bash
+cd clashgh/backend && npm test
+```
+
+Creates a separate database `clashgh_test` on the server in `DATABASE_URL`, runs the migrations, boots the API on a random port with stub Paystack, and plays full tournaments end to end over HTTP: 4 and 8 player official cups, a hosted cup with the 50/50 commission, cancel and refund, a late payment, a disputed final, a mid-cup refund, a replayed webhook, and finally the same money invariant checker the sweeper runs in production. Every scenario asserts that fees in equal prizes plus host share plus platform fee (or refunds) to the pesewa. Runs in about two seconds. Never touches the dev database.
