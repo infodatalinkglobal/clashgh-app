@@ -844,3 +844,13 @@ Decisions (user): the two players agree on ONE time; either proposes, the other 
 - Rules in `scheduleMatch`: time inside [max(now+10min, round_opens_at), window close]; cannot accept own proposal; after agreement a new proposal counts as the one reschedule and must be accepted.
 - Mobile: `components/ScheduleCard.tsx` (day/hour/quarter chips, no picker dependency; WhatsApp/Call buttons), used by MatchScreen in the pending state; Account has a "Contact number for opponents" field.
 - Tests: `test/schedule.test.mjs` (7 scenarios) alongside the money suite; `npm test` runs both.
+
+
+## Addendum: Public website and SEO, 2026-09-16
+
+- The API now serves a **server-rendered public site at /** (`backend/src/site/layout.js`, `pages.js`): home, /tournaments (+ per-tournament pages with Event schema), /games (+ per game), /how-it-works (HowTo), /hosts, /faq (FAQPage), /rules, /refunds, /terms, /privacy, /about, /contact (ContactPage), plus robots.txt, sitemap.xml (dynamic), llms.txt, tournaments.rss, humans.txt, .well-known/security.txt and an HTML 404. Every page: unique title + description, canonical, OG/Twitter with `/brand/og-default.png`, one H1, breadcrumbs (visible + BreadcrumbList), Organization/LocalBusiness + WebSite JSON-LD. No client JS.
+- The **player app moved to /app** (`expo.experiments.baseUrl = "/app"`, manifest scope `/app/`, React Navigation `linking` with real paths: `/app/tournament/:id`, `/app/match/:id`, `/app/wallet`, `/app/account`...). Legacy `/auth/callback`, `/tournament/:id`, `/match/:id` redirect to `/app/...`. Each screen sets its own tab title via `usePageTitle`. `/app` is noindex.
+- Brand: new gold three-bar mark (`backend/public/brand/*`, `mobile/assets/icon.png`, favicons, maskable icon, 1200x630 OG image). The old blue placeholder icon is gone.
+- Performance: no source maps in the export; `scripts/precompress.mjs` writes .br/.gz siblings (1.2 MB -> 268 KB brotli) and the server serves them; site HTML is gzipped; hashed bundles immutable, shell no-store. `expo-linear-gradient` removed.
+- Env: `SITE_ORIGIN`, `SITE_LEGAL_NAME`, `SITE_CONTACT_EMAIL`, `SITE_CONTACT_PHONE`, `SITE_TWITTER_HANDLE`. render.yaml declares the custom domain (clashgh.app + www) and www->apex redirect happens in production; trailing slashes 301 to the canonical path.
+- Dev preview: `PASSTHROUGH=1 node scripts/web-preview-proxy.mjs` forwards everything to the API (site + app), same as production.

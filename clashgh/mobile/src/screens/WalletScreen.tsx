@@ -8,6 +8,7 @@ import { Badge, Button, Eyebrow, FadeIn, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import { providerLabel, toLocalDisplay } from '../utils/phone';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Wallet'>;
 
@@ -28,6 +29,7 @@ const TYPE_META: Record<TransactionRow['type'], { label: string; sign: '+' | 'âˆ
  * Cached in memory across focus; last page kept when offline.
  */
 export function WalletScreen({ navigation }: Props) {
+  usePageTitle('Wallet');
   const { profile } = useAuth();
   const [rows, setRows] = useState<TransactionRow[]>([]);
   const [totals, setTotals] = useState<WalletTotals | null>(null);

@@ -4,6 +4,7 @@ import { Config } from '../config';
 import { useAuth } from '../store/AuthContext';
 import { Button, FadeIn, Logo, Screen, TextField } from '../components/ui';
 import { GAMES, colors, fontWeights, radius, spacing, typography } from '../theme';
+import { usePageTitle } from '../utils/pageTitle';
 
 /**
  * Sign-in (Module 2A).
@@ -14,6 +15,7 @@ import { GAMES, colors, fontWeights, radius, spacing, typography } from '../them
  * same backend contract as production, zero credentials needed.
  */
 export function SignInScreen() {
+  usePageTitle('Sign in');
   const { signInWithDevIdentity, signInWithGoogle, signInWithEmail, busy, error, dismissError } = useAuth();
   const [devEmail, setDevEmail] = useState('');
   const [showDevPicker, setShowDevPicker] = useState(false);

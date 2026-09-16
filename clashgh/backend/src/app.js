@@ -1,4 +1,6 @@
 import path from 'node:path';
+import fs from 'node:fs';
+import zlib from 'node:zlib';
 import express from 'express';
 import { env } from './config/env.js';
 import { authRouter } from './routes/auth.js';
@@ -13,6 +15,8 @@ import { hostsRouter } from './routes/hosts.js';
 import { paystackWebhookHandler } from './routes/webhooks.js';
 import { uploadsRouter, mountLocalScreenshotStatic } from './routes/uploads.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
+import { siteRouter, notFoundPage } from './site/pages.js';
+import { fileURLToPath } from 'node:url';
 
 export function createApp() {
   const app = express();
@@ -72,27 +76,97 @@ export function createApp() {
     app.use('/api', devPayRouter());
   }
 
-  // Web app: when WEB_DIST points at an `expo export --platform web` output
-  // directory, serve it from the same origin as the API. Same-origin means
-  // no CORS, cookies-free bearer auth works, and the Paystack callback and
-  // Google OAuth redirect land on one host. Hashed bundles cache forever;
-  // index.html never does. Anything that isn't /api or a real file falls
-  // back to index.html (client-side routing).
+  // Canonical host: redirect www.<domain> to the apex in production.
+  app.use((req, res, next) => {
+    if (env.nodeEnv === 'production' && req.hostname && req.hostname.startsWith('www.')) {
+      return res.redirect(301, `${env.siteOrigin}${req.originalUrl}`);
+    }
+    if (req.method === 'GET' && req.path.length > 1 && req.path.endsWith('/') && !req.path.startsWith('/api')) {
+      return res.redirect(301, req.path.slice(0, -1) + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''));
+    }
+    next();
+  });
+
+  // Security / hygiene headers for everything served here.
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Permissions-Policy', 'camera=(self), geolocation=()');
+    next();
+  });
+
+  // Brand assets (favicon, icons, social image) for the site and the app.
+  const publicDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public');
+  app.use(express.static(publicDir, { maxAge: '7d', index: false, redirect: false }));
+
+  // Public website: server-rendered HTML at the root (home, tournaments,
+  // how it works, legal pages, sitemap, robots, llms.txt). Crawlers and
+  // link previews get real content; players use the app at /app.
+  app.use((req, res, next) => {
+    // Gzip server-rendered HTML/XML/text (small pages; no dependency needed).
+    const enc = String(req.headers['accept-encoding'] || '');
+    if (!enc.includes('gzip')) return next();
+    const send = res.send.bind(res);
+    res.send = (body) => {
+      const type = String(res.getHeader('Content-Type') || '');
+      if (typeof body === 'string' && /^(text\/|application\/(xml|rss\+xml|json))/.test(type) && body.length > 1024 && !res.getHeader('Content-Encoding')) {
+        res.setHeader('Content-Encoding', 'gzip');
+        res.setHeader('Vary', 'Accept-Encoding');
+        return send(zlib.gzipSync(Buffer.from(body)));
+      }
+      return send(body);
+    };
+    next();
+  });
+  app.use(siteRouter);
+
+  // Player app: an `expo export --platform web` build served under /app.
+  // Hashed bundles cache forever; the HTML shell never does. Any /app/*
+  // path falls back to the shell (client-side routing).
   if (env.webDist) {
     const webDist = path.resolve(env.webDist);
-    app.use(express.static(webDist, {
-      index: 'index.html',
+    const shell = (req, res) => {
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Robots-Tag', 'noindex');
+      res.sendFile(path.join(webDist, 'index.html'));
+    };
+    // Serve precompressed .br/.gz siblings when the browser accepts them.
+    app.use('/app', (req, res, next) => {
+      if (req.method !== 'GET' || !/\.(js|json|css|svg|txt)$/.test(req.path)) return next();
+      const enc = String(req.headers['accept-encoding'] || '');
+      const file = path.join(webDist, req.path);
+      const pick = enc.includes('br') && fs.existsSync(`${file}.br`) ? ['br', '.br'] : enc.includes('gzip') && fs.existsSync(`${file}.gz`) ? ['gzip', '.gz'] : null;
+      if (!pick) return next();
+      res.setHeader('Content-Encoding', pick[0]);
+      res.setHeader('Vary', 'Accept-Encoding');
+      res.type(path.extname(req.path));
+      res.setHeader('Cache-Control', req.path.startsWith('/_expo/') ? 'public, max-age=31536000, immutable' : 'no-cache');
+      res.sendFile(file + pick[1]);
+    });
+    app.use('/app', express.static(webDist, {
+      index: false,
+      redirect: false,
       setHeaders(res, filePath) {
         if (filePath.includes(`${path.sep}_expo${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
         else res.setHeader('Cache-Control', 'no-cache');
       },
     }));
-    app.get(/^(?!\/api(\/|$)).*/, (req, res, next) => {
+    app.get(/^\/app(\/.*)?$/, (req, res, next) => {
       if (req.method !== 'GET' || !req.accepts('html')) return next();
-      res.setHeader('Cache-Control', 'no-cache');
-      res.sendFile(path.join(webDist, 'index.html'));
+      shell(req, res);
     });
+    // Legacy deep links from before the split (e.g. /auth/callback, /tournament/:id).
+    app.get(['/auth/callback', '/tournament/:id', '/match/:id'], (req, res) => res.redirect(302, `/app${req.originalUrl}`));
   }
+
+  // HTML 404 for browsers on the public site; JSON for the API and other clients.
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.path.startsWith('/api') && req.accepts(['html', 'json']) === 'html') {
+      return res.status(404).set({ 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }).send(notFoundPage());
+    }
+    next();
+  });
 
   app.use(notFoundHandler);
   app.use(errorHandler);

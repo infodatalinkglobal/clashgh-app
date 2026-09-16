@@ -1,4 +1,4 @@
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useEffect } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
@@ -36,6 +36,26 @@ type StackProps<T extends keyof RootStackParamList> = NativeStackScreenProps<Roo
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+/** URL <-> screen mapping. Web paths live under /app; native uses clashgh://. */
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: Platform.OS === 'web' ? [typeof window !== 'undefined' ? `${window.location.origin}/app` : '/app'] : [`${Config.deeplinkScheme}://`],
+  config: {
+    screens: {
+      Home: '',
+      Tournament: 'tournament/:tournamentId',
+      Join: 'tournament/:tournamentId/join',
+      Match: 'match/:matchId',
+      SubmitResult: 'match/:matchId/result',
+      Wallet: 'wallet',
+      Inbox: 'inbox',
+      Host: 'host',
+      Me: 'account',
+      Onboarding: 'onboarding',
+      SignIn: 'sign-in',
+    },
+  },
+};
+
 function Splash() {
   return (
     <View style={styles.splash}>
@@ -65,7 +85,7 @@ export function RootNavigator() {
           // Only auth callbacks carry a code; on web every page load has a URL.
           if (!cancelled && url && /[?&#]code=/.test(url)) {
             void handleAuthUrl(url).finally(() => {
-              if (Platform.OS === 'web') window.history.replaceState({}, '', '/');
+              if (Platform.OS === 'web') window.history.replaceState({}, '', '/app');
             });
           }
         }),
@@ -82,7 +102,7 @@ export function RootNavigator() {
   if (isOnboarding) return <OnboardingScreen />;
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking} documentTitle={{ enabled: false }}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="Tournament" component={TournamentScreen} />

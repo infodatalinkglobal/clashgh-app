@@ -7,6 +7,7 @@ import { useAuth } from '../store/AuthContext';
 import { Badge, Button, Screen, TextField } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SubmitResult'>;
 type Pick = 'won' | 'lost' | 'draw' | 'dispute';
@@ -28,6 +29,7 @@ const PICKS: { key: Pick; label: string; sub: string; tone: 'green' | 'muted' | 
  * Upload happens only at confirm time so a change of mind costs no data.
  */
 export function SubmitResultScreen({ navigation, route }: Props) {
+  usePageTitle('Submit result');
   const { matchId } = route.params;
   const { profile } = useAuth();
   const [m, setM] = useState<MatchView | null>(null);
@@ -133,7 +135,7 @@ export function SubmitResultScreen({ navigation, route }: Props) {
           <Text style={styles.step}>1 · Screenshot of the final score</Text>
           {preview ? (
             <>
-              <Image source={{ uri: preview.uri }} style={styles.preview} resizeMode="contain" />
+              <Image source={{ uri: preview.uri }} style={styles.preview} resizeMode="contain" accessibilityLabel="Your screenshot of the final score, ready to submit" alt="Your screenshot of the final score, ready to submit" />
               <Text style={styles.meta2}>Compressed to {Math.round(preview.bytes / 1024)}KB for upload</Text>
             </>
           ) : (

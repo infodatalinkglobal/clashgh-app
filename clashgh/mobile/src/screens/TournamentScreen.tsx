@@ -17,6 +17,7 @@ import { Badge, Button, Countdown, Eyebrow, FadeIn, GameTile, LiveDot, Screen } 
 import { Bracket } from '../components/Bracket';
 import { GAMES, colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Tournament'>;
 
@@ -30,6 +31,7 @@ export function TournamentScreen({ navigation, route }: Props) {
   const { tournamentId } = route.params;
   const { profile } = useAuth();
   const [t, setT] = useState<Tournament | null>(null);
+  usePageTitle(t?.title ?? 'Tournament');
   const [bracket, setBracket] = useState<BracketView | null>(null);
   const [reg, setReg] = useState<RegistrationView | null>(null);
   const [error, setError] = useState<string | null>(null);

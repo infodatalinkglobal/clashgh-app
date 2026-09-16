@@ -9,11 +9,13 @@ import { Badge, Button, Eyebrow, FadeIn, Screen, TextField } from '../components
 import { ApiError, endpoints } from '../services/api';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import { providerLabel, toLocalDisplay } from '../utils/phone';
+import { usePageTitle } from '../utils/pageTitle';
 
 const BUILD_STAMP = process.env.EXPO_PUBLIC_BUILD_STAMP ?? 'dev';
 
 /** Account screen: profile, verification state, sign-out. */
 export function MeScreen() {
+  usePageTitle('Account');
   const { profile, signOut, busy, refreshProfile } = useAuth();
   useFocusEffect(useCallback(() => { void refreshProfile().catch(() => undefined); }, [refreshProfile]));
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();

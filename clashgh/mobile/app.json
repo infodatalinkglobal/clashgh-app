@@ -7,14 +7,14 @@
     "icon": "./assets/icon.png",
     "scheme": "clashgh",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#07090D",
+    "backgroundColor": "#0B0D10",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.clashgh.app",
       "adaptiveIcon": {
-        "backgroundColor": "#07090D",
+        "backgroundColor": "#0B0D10",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -25,11 +25,11 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
       "output": "single",
-      "name": "ClashGH",
+      "name": "ClashGH app: tournaments, matches and wallet",
       "shortName": "ClashGH",
-      "themeColor": "#07090D",
-      "backgroundColor": "#07090D",
-      "description": "Paid mobile-game tournaments in Ghana. Enter with MoMo, win real cash."
+      "themeColor": "#0B0D10",
+      "backgroundColor": "#0B0D10",
+      "description": "Paid 1v1 mobile game tournaments in Ghana. Enter with Mobile Money, winnings paid to your MoMo number."
     },
     "plugins": [
       "expo-secure-store",
@@ -53,6 +53,9 @@
           "defaultChannel": "default"
         }
       ]
-    ]
+    ],
+    "experiments": {
+      "baseUrl": "/app"
+    }
   }
 }

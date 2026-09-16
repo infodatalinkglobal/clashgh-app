@@ -16,6 +16,7 @@ import { Badge, Button, FadeIn, GameTile, Screen, TextField } from '../component
 import { GAMES, colors, fontWeights, radius, spacing, typography } from '../theme';
 import { providerLabel, toLocalDisplay } from '../utils/phone';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Join'>;
 
@@ -49,6 +50,7 @@ type Step = 'details' | 'paying' | 'paid' | 'failed';
  *      be resumed from Home ("Finish payment").
  */
 export function JoinScreen({ navigation, route }: Props) {
+  usePageTitle('Join tournament');
   const { tournamentId, resumeReference, resumeDeadline } = route.params;
   const { profile } = useAuth();
 

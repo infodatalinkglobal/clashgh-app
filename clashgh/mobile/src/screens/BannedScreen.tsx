@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { useAuth } from '../store/AuthContext';
 import { Button, Logo, Screen } from '../components/ui';
 import { colors, fontWeights, spacing, typography } from '../theme';
+import { usePageTitle } from '../utils/pageTitle';
 
 /**
  * Shown instead of the app when profile.is_banned. The backend rejects
@@ -10,6 +11,7 @@ import { colors, fontWeights, spacing, typography } from '../theme';
  * nothing else the player could do here: explain and offer sign-out.
  */
 export function BannedScreen() {
+  usePageTitle('Account suspended');
   const { profile, signOut, busy } = useAuth();
   return (
     <Screen>

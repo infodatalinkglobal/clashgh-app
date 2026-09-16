@@ -4,6 +4,7 @@ import { useAuth } from '../store/AuthContext';
 import { Badge, Button, Logo, Screen, TextField } from '../components/ui';
 import { colors, fontWeights, spacing, typography } from '../theme';
 import { detectProvider, isValidUsername, providerLabel, toE164, toLocalDisplay } from '../utils/phone';
+import { usePageTitle } from '../utils/pageTitle';
 
 /**
  * One-time onboarding: username + MoMo number.
@@ -15,6 +16,7 @@ import { detectProvider, isValidUsername, providerLabel, toE164, toLocalDisplay 
  * Set once, then locked: the same number pays and receives prizes.
  */
 export function OnboardingScreen() {
+  usePageTitle('Set up your account');
   const { profile, setProfileUsername, resolveMomo, saveMomo, busy, error, dismissError } = useAuth();
 
   const [username, setUsername] = useState(profile?.username ?? '');

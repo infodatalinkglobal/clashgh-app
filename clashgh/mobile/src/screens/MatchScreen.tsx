@@ -9,6 +9,7 @@ import { Badge, Button, Eyebrow, FadeIn, Screen } from '../components/ui';
 import { ScheduleCard } from '../components/ScheduleCard';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Match'>;
 
@@ -30,6 +31,7 @@ export function MatchScreen({ navigation, route }: Props) {
   const { matchId } = route.params;
   const { profile } = useAuth();
   const [m, setM] = useState<MatchView | null>(null);
+  usePageTitle(m ? `Round ${m.match_round} match, ${m.tournament_title}` : 'Match room');
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [now, setNow] = useState(Date.now());

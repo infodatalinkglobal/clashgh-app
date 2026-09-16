@@ -6,6 +6,7 @@ import { endpoints, type NotificationRow } from '../services/api';
 import { FadeIn, Screen } from '../components/ui';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Inbox'>;
 
@@ -21,6 +22,7 @@ function timeAgo(iso: string) {
  *  sees room codes, results and payout confirmations. Tapping deep-links to
  *  the match/tournament referenced in the payload. */
 export function InboxScreen({ navigation }: Props) {
+  usePageTitle('Notifications');
   const [rows, setRows] = useState<NotificationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

@@ -19,7 +19,9 @@ import { URL } from 'node:url';
 const PORT = Number(process.env.PORT || 8082);
 const API = new URL(process.env.API_TARGET || 'http://localhost:3000');
 const METRO = new URL(process.env.METRO_TARGET || 'http://localhost:8081');
-const isApi = (p) => p === '/api' || p.startsWith('/api/') || p.startsWith('/uploads-dev/');
+// PASSTHROUGH=1: forward EVERYTHING to the API (which serves the public site at / and the app at /app, exactly like production).
+const PASSTHROUGH = process.env.PASSTHROUGH === '1';
+const isApi = (p) => PASSTHROUGH || p === '/api' || p.startsWith('/api/') || p.startsWith('/uploads-dev/');
 // STATIC_DIR: serve an `expo export --platform web` build instead of Metro.
 // A dev bundle talks to Metro's own host for HMR/symbolication, which a
 // tunnel preview blocks; a static export has no dev-server coupling.

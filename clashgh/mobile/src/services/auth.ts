@@ -145,7 +145,7 @@ class AuthService {
     const sb = await getSupabase();
     // Web: Supabase redirects back to this same page; native: deep link.
     const redirectTo = Platform.OS === 'web'
-      ? `${window.location.origin}/auth/callback`
+      ? `${window.location.origin}/app/auth/callback`
       : `${Config.deeplinkScheme}://auth/callback`;
     const { error } = await sb.auth.signInWithOAuth({
       provider: 'google',

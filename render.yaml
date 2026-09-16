@@ -15,7 +15,22 @@ services:
       npm run web:export --prefix mobile
     startCommand: npm start --prefix backend
     healthCheckPath: /api/health
+    # Custom domain: add clashgh.app (and www) under Settings > Custom Domains,
+    # then at your DNS provider create  A  @  -> 216.24.57.1  and
+    # CNAME  www -> clashgh.onrender.com . Render issues TLS automatically.
+    # SITE_ORIGIN below must match the domain (canonical URLs, sitemap, schema).
+    domains:
+      - clashgh.app
+      - www.clashgh.app
     envVars:
+      - key: SITE_ORIGIN
+        value: https://clashgh.app
+      - key: SITE_LEGAL_NAME
+        sync: false            # registered business name shown in footer, terms, schema
+      - key: SITE_CONTACT_EMAIL
+        value: support@clashgh.app
+      - key: SITE_CONTACT_PHONE
+        sync: false            # optional, E.164 (+233...), shown on /contact and used for WhatsApp
       - key: NODE_ENV
         value: production
       - key: WEB_DIST

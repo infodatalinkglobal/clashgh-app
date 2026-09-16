@@ -17,6 +17,7 @@ import { useAuth } from '../store/AuthContext';
 import { Badge, Button, Eyebrow, FadeIn, Screen, TextField } from '../components/ui';
 import { GAMES, colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Host'>;
 
@@ -34,6 +35,7 @@ const START_AFTER_HOURS = [1, 2, 6, 12, 24];
  * pay out and the host cut is split 50/50 host/ClashGH straight to MoMo.
  */
 export function HostScreen({ navigation }: Props) {
+  usePageTitle('Host Studio');
   const { profile, refreshProfile } = useAuth();
   const [status, setStatus] = useState<HostStatus>(profile?.host_status ?? 'none');
   const [limits, setLimits] = useState<HostLimits | null>(null);

@@ -32,8 +32,8 @@ See `clashgh/SETUP.md` (Docker Postgres, `npm run migrate:seed`, VS Code tasks, 
 ## Dev stack (sandbox may be recycled — rebuild if ports are dead)
 - Postgres: embedded, `/tmp/pg/start.mjs` (5433) — re-run migrations 001,003–006 + seeds if lost.
 - API: `cd clashgh/backend && node src/server.js` (3000).
-- Web preview: `cd clashgh/mobile && EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 npm run web:export &&
-  PORT=8082 STATIC_DIR=web-dist API_TARGET=http://localhost:3000 node scripts/web-preview-proxy.mjs`.
+- Web preview: `cd clashgh/mobile && EXPO_NO_TELEMETRY=1 EXPO_OFFLINE=1 npm run web:export` then set `WEB_DIST=../mobile/web-dist` in backend/.env and run
+  `PORT=8082 PASSTHROUGH=1 API_TARGET=http://localhost:3000 node scripts/web-preview-proxy.mjs` (site at /, app at /app).
 - Admin: `cd clashgh/admin && npm run dev -- --host 0.0.0.0 --port 5173`.
 - Seed logins (dev sign-in, any email below): admin@clashgh.dev, kofi/ama/yao/efua/kwame/akos/
   nana/abena@dev.gh, newbie@dev.gh. `nana` is an approved host with one completed cup.

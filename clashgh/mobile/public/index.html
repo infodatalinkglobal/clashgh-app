@@ -1,44 +1,45 @@
 <!DOCTYPE html>
-<html lang="%LANG_ISO_CODE%">
+<html lang="en-GH">
   <head>
     <meta charset="utf-8" />
-    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>%WEB_TITLE%</title>
-    <meta name="theme-color" content="#07090D" />
-    <meta name="description" content="Paid mobile-game tournaments in Ghana. Enter with MoMo, win real cash." />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ClashGH app: tournaments, matches and wallet</title>
+    <meta name="description" content="The ClashGH player app. Join paid 1v1 mobile game tournaments with Mobile Money, schedule your matches, submit results and track payouts." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://clashgh.app/app" />
+    <meta name="theme-color" content="#0B0D10" />
+    <meta name="application-name" content="ClashGH" />
+    <meta property="og:site_name" content="ClashGH" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="ClashGH app" />
+    <meta property="og:description" content="Join paid 1v1 mobile game tournaments with Mobile Money. Winnings are sent to your MoMo number." />
+    <meta property="og:url" content="https://clashgh.app/app" />
+    <meta property="og:image" content="https://clashgh.app/brand/og-default.png" />
+    <meta property="og:image:alt" content="ClashGH logo with the words: paid mobile game tournaments in Ghana" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="ClashGH" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-
-    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <link rel="manifest" href="/app/manifest.json" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 64x64" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/app/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/app/icons/apple-touch-icon.png" />
     <style id="expo-reset">
-      /* These styles make the body full-height */
-      html,
-      body {
-        height: 100%;
-      }
-      /* These styles disable body scrolling if you are using <ScrollView> */
-      body {
-        overflow: hidden;
-      }
-      /* These styles make the root element full-height */
-      #root {
-        display: flex;
-        height: 100%;
-        flex: 1;
-      }
+      html, body { height: 100%; }
+      body { overflow: hidden; margin: 0; background: #0B0D10; color: #F3F4F6; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      #root { display: flex; height: 100%; flex: 1; }
+      .nojs { padding: 32px 20px; max-width: 480px; margin: 0 auto; line-height: 1.6; }
+      .nojs a { color: #F2B518; }
     </style>
   </head>
-
-  <body style="background:#07090D">
-    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+  <body>
     <noscript>
-      You need to enable JavaScript to run this app.
+      <div class="nojs">
+        <h1 style="font-size:22px">ClashGH needs JavaScript</h1>
+        <p>The player app runs in your browser and needs JavaScript enabled. You can still read about <a href="/tournaments">open tournaments</a> and <a href="/how-it-works">how ClashGH works</a> without it.</p>
+      </div>
     </noscript>
-    <!-- The root element for your Expo app. -->
-    <div id="root"></div>
+    <div id="root" role="application" aria-label="ClashGH player app"></div>
   </body>
 </html>

@@ -84,6 +84,12 @@ export const env = {
   hostCommissionPercent: Number(process.env.HOST_COMMISSION_PERCENT ?? 50),
   hostCutMaxPercent: Number(process.env.HOST_CUT_MAX_PERCENT ?? 20),
   hostMinEntryPesewas: Number(process.env.HOST_MIN_ENTRY_PESEWAS ?? 500),
+  // Public website identity (canonical URLs, schema.org, contact page).
+  siteOrigin: process.env.SITE_ORIGIN || 'https://clashgh.app',
+  siteLegalName: process.env.SITE_LEGAL_NAME || 'ClashGH',
+  siteContactEmail: process.env.SITE_CONTACT_EMAIL || 'support@clashgh.app',
+  siteContactPhone: process.env.SITE_CONTACT_PHONE || '',
+  siteTwitterHandle: process.env.SITE_TWITTER_HANDLE || '',
   corsOrigins: (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 };
 

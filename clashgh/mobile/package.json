@@ -14,7 +14,6 @@
     "expo-device": "~57.0.2",
     "expo-image-manipulator": "~57.0.18",
     "expo-image-picker": "~57.0.18",
-    "expo-linear-gradient": "~15.0.0",
     "expo-linking": "~57.0.10",
     "expo-notifications": "~57.0.19",
     "expo-secure-store": "~57.0.4",
@@ -36,7 +35,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "web:proxy": "STATIC_DIR=web-dist node scripts/web-preview-proxy.mjs",
-    "web:export": "EXPO_PUBLIC_API_URL=/api EXPO_PUBLIC_BUILD_STAMP=$(date -u +%Y%m%d-%H%M) expo export --platform web --output-dir web-dist",
+    "web:export": "EXPO_PUBLIC_API_URL=/api EXPO_PUBLIC_BUILD_STAMP=$(date -u +%Y%m%d-%H%M) expo export --platform web --output-dir web-dist --clear && node scripts/precompress.mjs web-dist",
     "web:proxy:metro": "node scripts/web-preview-proxy.mjs"
   },
   "private": true

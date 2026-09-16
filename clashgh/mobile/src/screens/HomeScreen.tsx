@@ -23,6 +23,7 @@ import { Badge, Button, Countdown, FadeIn, GameTile, LiveDot, Screen, Skeleton }
 import { GAMES, colors, fontWeights, radius, spacing, typography } from '../theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { usePageTitle } from '../utils/pageTitle';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -49,6 +50,7 @@ const STATUS_TONE: Record<TournamentStatus, 'green' | 'muted' | 'red' | 'gold'> 
  * "Last updated" label + refresh on screen focus (agent.md §14).
  */
 export function HomeScreen({ navigation }: Props) {
+  usePageTitle('Tournaments');
   const { profile } = useAuth();
   const [game, setGame] = useState<GameType | 'all'>('all');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
