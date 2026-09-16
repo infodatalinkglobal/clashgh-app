@@ -79,6 +79,8 @@ export const env = {
   webDist: process.env.WEB_DIST || '',
   // Community hosts: platform's share of the host cut (50 = 50/50), and the
   // cap on the host cut so prize pools stay >= 80% of fees.
+  // Match scheduling: hours players have per round to agree and play
+  roundWindowHours: Number(process.env.ROUND_WINDOW_HOURS ?? 24),
   hostCommissionPercent: Number(process.env.HOST_COMMISSION_PERCENT ?? 50),
   hostCutMaxPercent: Number(process.env.HOST_CUT_MAX_PERCENT ?? 20),
   hostMinEntryPesewas: Number(process.env.HOST_MIN_ENTRY_PESEWAS ?? 500),

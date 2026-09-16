@@ -831,3 +831,16 @@ Next module to build: 2B — Home & Lobby
 ## Addendum — Community hosts (marketplace), 2026-09-15
 
 Decided with the owner: ClashGH is a middleman. Verified players apply to host, an admin approves. Hosts create/cancel their own tournaments (fee, size, times, cut ≤ 20 %, rules text); everything else (escrow, brackets, disputes, refunds, payouts) stays platform-run. The host cut is split **50/50** host/ClashGH and paid by the same MoMo transfer pipeline as prizes. Official cups are unchanged (host = null). See `backend/README.md` → Community hosts. Status: ✅ backend + mobile Host Studio + admin Hosts page.
+
+
+## Addendum: Player-scheduled matches, 2026-09-16
+
+Decisions (user): the two players agree on ONE time; either proposes, the other accepts or counter-proposes. Each round gives them **24 hours** (`ROUND_WINDOW_HOURS`) from the moment the round opens. If the opponent never answers, the proposed time stands at that time. If nobody proposes, the match activates when the window closes. **One reschedule per match** (either player), then the agreed time stands; a missed time is a walkover through the existing deadline rule (the present player submits "won"). Players may add an optional contact number (WhatsApp), shown only to the current opponent while the match is open; the MoMo number is never shared.
+
+- Migration `007_match_scheduling.sql`: `matches.round_opens_at / proposed_at / proposed_by / scheduled_at / reschedule_count`, `users.contact_phone`.
+- `starts_at` now means "round 1 scheduling opens" (round-1 `round_opens_at` = `starts_at`, set at bracket generation). Later matches open when both players are known (`completeMatchTx`), with a `schedule_open` notification.
+- `activateDueMatches` activates a match when `scheduled_at <= now`, or an unanswered `proposed_at <= now`, or `round_opens_at + window <= now`. The tournament flips to `in_progress` at `starts_at` regardless.
+- API: `POST /api/matches/:id/schedule { action: 'propose', at } | { action: 'accept' }`; `GET /api/matches/:id` returns `schedule {...}` and, for the authenticated opponent only, `player.contact_phone`; `PATCH /api/me { contact_phone }` (null removes).
+- Rules in `scheduleMatch`: time inside [max(now+10min, round_opens_at), window close]; cannot accept own proposal; after agreement a new proposal counts as the one reschedule and must be accepted.
+- Mobile: `components/ScheduleCard.tsx` (day/hour/quarter chips, no picker dependency; WhatsApp/Call buttons), used by MatchScreen in the pending state; Account has a "Contact number for opponents" field.
+- Tests: `test/schedule.test.mjs` (7 scenarios) alongside the money suite; `npm test` runs both.

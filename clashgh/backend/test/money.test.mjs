@@ -12,7 +12,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   resetDatabase, startApp, makePlayer, createOfficialCup, joinAndPay, fillCup,
-  kickOff, activeMatches, agree, submit, ledger, ageTournaments,
+  kickOff, lapseWindows, activeMatches, agree, submit, ledger, ageTournaments,
 } from './helpers.mjs';
 
 let app; let api; let pool; let origin; let svc;
@@ -35,7 +35,7 @@ async function playThrough(tournamentId, ids, { pickWinner = (m) => m.player1_id
       assert.equal(m.status, 'active', `round ${r} match ${m.match_number} should be active`);
       await agree(api, origin, ids, m, pickWinner(m));
     }
-    if (r < rounds) await svc.activateDueMatches();
+    if (r < rounds) { await lapseWindows(pool, tournamentId); await svc.activateDueMatches(); }
   }
   await svc.progressTournaments();
 }
@@ -215,6 +215,7 @@ test('disputed final resolved by award pays out correctly; no-show is settled by
   assert.deepEqual(enforced.map((e) => e.outcome), ['completed']);
   assert.equal(enforced[0].winner_id, m1.player1_id, 'single won pick wins on deadline');
 
+  await lapseWindows(pool, t.id);
   await svc.activateDueMatches();
   const [final] = await activeMatches(pool, t.id, 2);
   assert.equal(final.status, 'active');

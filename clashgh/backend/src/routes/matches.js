@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { pool } from '../db/pool.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireVerified, optionalAuth } from '../middleware/auth.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
 import { UUID_RE } from '../utils/validate.js';
-import { submitResult } from '../services/matches.js';
+import { submitResult, scheduleMatch, scheduleView } from '../services/matches.js';
 
 /**
  * Match endpoints (Module 1F).
@@ -59,20 +59,24 @@ async function loadMatchView(matchId, { includeScreenshots = false } = {}) {
     player2: playerView(m.player2_id, m.player2_pick, m.player2_screenshot_url),
     winner_id: m.winner_id,
     dispute_reason: m.dispute_reason,
+    schedule: scheduleView(m),
   };
 }
 
-matchRouter.get('/:id', asyncHandler(async (req, res) => {
+matchRouter.get('/:id', optionalAuth, asyncHandler(async (req, res) => {
   const id = parseIdParam(req.params.id);
   const match = await loadMatchView(id);
   if (!match) throw new ApiError(404, 'Match not found');
+  const viewerId = req.user?.id ?? null;
+  const viewerIsPlayer = !!viewerId && (match.player1?.user_id === viewerId || match.player2?.user_id === viewerId);
+  const matchOpen = !['completed'].includes(match.status);
 
   // Resolve usernames + seeds + in-game UIDs for the two players.
   for (const side of ['player1', 'player2']) {
     const p = match[side];
     if (!p) continue;
     const { rows: [info] } = await pool.query(
-      `SELECT u.username, u.email, r.seed, r.game_uid
+      `SELECT u.username, u.email, r.seed, r.game_uid, u.contact_phone
        FROM public.users u
        JOIN public.registrations r ON r.user_id = u.id AND r.tournament_id = $2
        WHERE u.id = $1`,
@@ -82,10 +86,26 @@ matchRouter.get('/:id', asyncHandler(async (req, res) => {
       p.username = info.username;
       p.seed = info.seed;
       p.game_uid = info.game_uid; // public by design — how players find each other in-game
+      // Contact number: only the current opponent sees it, only while the match is open.
+      p.contact_phone = viewerIsPlayer && matchOpen && p.user_id !== viewerId ? info.contact_phone ?? null : null;
     }
   }
 
   res.json({ success: true, data: match, message: 'Match loaded' });
+}));
+
+/**
+ * POST /api/matches/:id/schedule  { action: 'propose', at } | { action: 'accept' }
+ * Players agree on one time; see services/matches.js scheduleMatch.
+ */
+matchRouter.post('/:id/schedule', requireAuth, requireVerified, asyncHandler(async (req, res) => {
+  const id = parseIdParam(req.params.id);
+  const result = await scheduleMatch({ matchId: id, userId: req.user.id, action: req.body?.action, at: req.body?.at });
+  res.json({
+    success: true,
+    data: result,
+    message: req.body?.action === 'accept' ? 'Match time agreed' : 'Time proposed. Your opponent has been notified.',
+  });
 }));
 
 matchRouter.post(

@@ -24,6 +24,7 @@ function profilePayload(user) {
     is_banned: user.is_banned,
     created_at: user.created_at,
     host_status: user.host_status ?? 'none',
+    contact_phone: user.contact_phone ?? null,
     host_note: user.host_note ?? null,
   };
 }
@@ -36,6 +37,20 @@ authRouter.get('/me', requireAuth, asyncHandler(async (req, res) => {
 /** PATCH /api/me — update username (onboarding). */
 authRouter.patch('/me', requireAuth, asyncHandler(async (req, res) => {
   const { username } = req.body || {};
+
+  // Contact number for match scheduling (optional; shown only to the
+  // current opponent while a match is open). Send null to remove it.
+  if (Object.prototype.hasOwnProperty.call(req.body || {}, 'contact_phone') && username === undefined) {
+    const raw = req.body.contact_phone;
+    let e164 = null;
+    if (raw !== null && raw !== '') {
+      e164 = toE164(raw);
+      if (!e164) throw new ApiError(400, 'Enter a valid Ghana number (0XXXXXXXXX or +233XXXXXXXXX)');
+    }
+    await pool.query('UPDATE public.users SET contact_phone = $2 WHERE id = $1', [req.user.id, e164]);
+    return res.json({ success: true, data: { contact_phone: e164 }, message: e164 ? 'Contact number saved' : 'Contact number removed' });
+  }
+
   if (typeof username !== 'string' || !USERNAME_RE.test(username)) {
     throw new ApiError(
       400,

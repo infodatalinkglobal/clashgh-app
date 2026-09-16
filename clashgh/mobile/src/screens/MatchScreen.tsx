@@ -6,6 +6,7 @@ import { endpoints, type MatchPlayerView, type MatchView } from '../services/api
 import { Config } from '../config';
 import { useAuth } from '../store/AuthContext';
 import { Badge, Button, Eyebrow, FadeIn, Screen } from '../components/ui';
+import { ScheduleCard } from '../components/ScheduleCard';
 import { colors, fontWeights, radius, spacing, typography } from '../theme';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -123,18 +124,28 @@ export function MatchScreen({ navigation, route }: Props) {
 
             {/* Stage-specific content */}
             {m.status === 'pending' ? (
-              <View style={styles.card}>
-                <Text style={styles.cardLabel}>Kick-off</Text>
-                {!m.player1 || !m.player2 ? (
-                  <Text style={styles.meta}>Waiting for the previous round to finish. Your opponent will appear here.</Text>
-                ) : null}
-                <Text style={styles.big}>{startsIn > 0 ? countdown(startsIn) : m.match_round > 1 ? 'When round ' + (m.match_round - 1) + ' completes' : 'Starting…'}</Text>
-                <Text style={styles.meta2}>
-                  {m.match_round === 1
-                    ? `${new Date(m.tournament_starts_at).toLocaleString()}. The room code appears here at kick-off. Be online a few minutes early.`
-                    : 'Later rounds start as soon as every match of the previous round is done. Keep this screen open.'}
-                </Text>
-              </View>
+              !m.player1 || !m.player2 ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardLabel}>Next opponent</Text>
+                  <Text style={styles.meta}>Waiting for the previous round to finish. Your opponent will appear here, then you both agree a time to play.</Text>
+                </View>
+              ) : !m.schedule.round_opens_at || startsIn > 0 ? (
+                <View style={styles.card}>
+                  <Text style={styles.cardLabel}>Scheduling opens</Text>
+                  <Text style={styles.big}>{startsIn > 0 ? countdown(startsIn) : 'Soon'}</Text>
+                  <Text style={styles.meta2}>
+                    {new Date(m.tournament_starts_at).toLocaleString()}. From then you and your opponent have 24 hours to agree a time and play.
+                  </Text>
+                </View>
+              ) : participant && meId ? (
+                <ScheduleCard matchId={m.id} meId={meId} opponent={opponent} schedule={m.schedule} onChanged={() => void load()} />
+              ) : (
+                <View style={styles.card}>
+                  <Text style={styles.cardLabel}>Match time</Text>
+                  <Text style={styles.big}>{m.schedule.scheduled_at ? new Date(m.schedule.scheduled_at).toLocaleString() : 'Being agreed'}</Text>
+                  <Text style={styles.meta2}>The players agree a time between themselves. The room code appears when the match starts.</Text>
+                </View>
+              )
             ) : null}
 
             {m.status === 'active' || m.status === 'awaiting_results' ? (

@@ -37,7 +37,7 @@ export function issueToken(userId, email) {
 }
 
 const PROFILE_FIELDS =
-  'id, email, phone, phone_verified, username, momo_provider, role, is_banned, created_at, host_status, host_note, host_applied_at';
+  'id, email, phone, phone_verified, username, momo_provider, role, is_banned, created_at, host_status, host_note, host_applied_at, contact_phone';
 
 /**
  * requireAuth — verify the Bearer JWT and load the profile row.
@@ -81,6 +81,20 @@ export async function requireAuth(req, res, next) {
   } catch (err) {
     next(err);
   }
+}
+
+/**
+ * optionalAuth — like requireAuth when a token is present (so the route can
+ * tailor the response to the viewer), a no-op anonymous request otherwise.
+ * A bad token is ignored, not rejected: the route is public.
+ */
+export function optionalAuth(req, res, next) {
+  const hasToken = (req.headers.authorization || '').startsWith('Bearer ') || (env.nodeEnv !== 'production' && !!req.headers['x-clashgh-token']);
+  if (!hasToken) return next();
+  requireAuth(req, res, (err) => {
+    if (err) req.user = undefined;
+    next();
+  });
 }
 
 /** requireAdmin — after requireAuth; 403 unless role='admin'. */

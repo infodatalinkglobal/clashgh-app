@@ -83,9 +83,9 @@ export async function generateBracket(tournamentId) {
         const p1 = round === 1 ? order[(m - 1) * 2] : null;
         const p2 = round === 1 ? order[(m - 1) * 2 + 1] : null;
         await client.query(
-          `INSERT INTO public.matches (tournament_id, match_round, match_number, player1_id, player2_id, status)
-           VALUES ($1, $2, $3, $4, $5, 'pending')`,
-          [tournamentId, round, m, p1, p2],
+          `INSERT INTO public.matches (tournament_id, match_round, match_number, player1_id, player2_id, status, round_opens_at)
+           VALUES ($1, $2, $3, $4, $5, 'pending', CASE WHEN $2 = 1 THEN $6::timestamptz END)`,
+          [tournamentId, round, m, p1, p2, t.starts_at],
         );
       }
     }

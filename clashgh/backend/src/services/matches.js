@@ -33,6 +33,9 @@ import { cancelTournament } from './cancel.js';
  */
 
 const PICKS = ['won', 'lost', 'draw', 'dispute'];
+const ROUND_WINDOW_MS = env.roundWindowHours * 3600_000;
+const MAX_RESCHEDULES = 1;
+const MIN_LEAD_MS = 10 * 60_000; // a proposal must be at least 10 minutes away
 const RESOLUTIONS = ['award', 'replay', 'refund'];
 
 // ---------------------------------------------------------------------------
@@ -132,7 +135,7 @@ export async function activateDueMatches() {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      // (per-tournament errors are caught below — one broken tournament
+      // (per-tournament errors are caught below: one broken tournament
       // must not stop activation for the others)
       await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`tournament:${t.id}`]);
       const { rows: [cur] } = await client.query(
@@ -144,55 +147,34 @@ export async function activateDueMatches() {
         continue;
       }
 
-      // Round 1: the tournament has reached its start time.
+      // The tournament is "in progress" from kick-off onwards, even while
+      // round-1 players are still agreeing on their times.
       if (cur.status === 'full' && cur.starts_at <= new Date()) {
-        const { rows: r1 } = await client.query(
-          `SELECT id FROM public.matches
-           WHERE tournament_id = $1 AND match_round = 1 AND status = 'pending'
-           ORDER BY match_number`,
-          [cur.id],
-        );
-        for (const m of r1) {
-          const done = await activateMatchTx(client, m.id, cur.result_window_minutes);
-          if (done) activated.push(done.id);
-        }
         await client.query(`UPDATE public.tournaments SET status = 'in_progress' WHERE id = $1 AND status = 'full'`, [cur.id]);
-        await client.query('COMMIT');
-        continue;
       }
 
-      // Later round: the highest fully-completed round below it.
-      if (cur.status === 'in_progress') {
-        const { rows: [next] } = await client.query(
-          `WITH rounds AS (
-             SELECT match_round, count(*) AS total,
-                    count(*) FILTER (WHERE status = 'completed') AS done
-             FROM public.matches WHERE tournament_id = $1
-             GROUP BY match_round
+      // A pending match with both players is due when:
+      //   - its agreed time has come (scheduled_at), or
+      //   - a proposal was never answered and that time has come, or
+      //   - nobody agreed and the round window has closed.
+      const { rows: due } = await client.query(
+        `SELECT id FROM public.matches
+         WHERE tournament_id = $1 AND status = 'pending'
+           AND player1_id IS NOT NULL AND player2_id IS NOT NULL
+           AND round_opens_at IS NOT NULL
+           AND (
+             (scheduled_at IS NOT NULL AND scheduled_at <= now())
+             OR (scheduled_at IS NULL AND proposed_at IS NOT NULL AND proposed_at <= now())
+             OR (scheduled_at IS NULL AND round_opens_at + make_interval(hours => $2) <= now())
            )
-           SELECT next_r.match_round
-           FROM rounds next_r
-           WHERE next_r.match_round > 1
-             AND next_r.match_round = (
-               SELECT max(prev.match_round) + 1 FROM rounds prev
-               WHERE prev.total = prev.done
-             )`,
-          [cur.id],
-        );
-        if (next) {
-          const { rows: pending } = await client.query(
-            `SELECT id FROM public.matches
-             WHERE tournament_id = $1 AND match_round = $2 AND status = 'pending'
-             ORDER BY match_number`,
-            [cur.id, next.match_round],
-          );
-          for (const m of pending) {
-            const done = await activateMatchTx(client, m.id, cur.result_window_minutes);
-            if (done) activated.push(done.id);
-          }
-        }
-        await client.query('COMMIT');
+         ORDER BY match_round, match_number`,
+        [cur.id, env.roundWindowHours],
+      );
+      for (const m of due) {
+        const done = await activateMatchTx(client, m.id, cur.result_window_minutes);
+        if (done) activated.push(done.id);
       }
+      await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK');
       console.error(`[matchflow] activation failed for tournament ${t.id}:`, err.message);
@@ -202,6 +184,115 @@ export async function activateDueMatches() {
   }
   return activated;
 }
+
+// ---------------------------------------------------------------------------
+// Player scheduling (propose / accept / counter / reschedule)
+// ---------------------------------------------------------------------------
+
+function scheduleView(m) {
+  const opens = m.round_opens_at ? new Date(m.round_opens_at) : null;
+  return {
+    round_opens_at: m.round_opens_at,
+    window_closes_at: opens ? new Date(opens.getTime() + ROUND_WINDOW_MS).toISOString() : null,
+    proposed_at: m.proposed_at,
+    proposed_by: m.proposed_by,
+    scheduled_at: m.scheduled_at,
+    reschedule_count: m.reschedule_count,
+    reschedules_left: Math.max(0, MAX_RESCHEDULES - (m.reschedule_count ?? 0)),
+  };
+}
+
+async function notifyScheduleOpen(client, match) {
+  const c = await matchContext(client, match);
+  const closes = new Date(new Date(match.round_opens_at).getTime() + ROUND_WINDOW_MS).toISOString();
+  const base = { tournament_title: c.tournament_title, round: match.match_round, window_closes_at: closes, match_id: match.id };
+  await notify(client, { userId: match.player1_id, template: 'schedule_open', payload: { ...base, opponent_username: c.p2_username } });
+  await notify(client, { userId: match.player2_id, template: 'schedule_open', payload: { ...base, opponent_username: c.p1_username } });
+}
+
+/**
+ * POST /api/matches/:id/schedule  { action: 'propose' | 'accept', at? }
+ *
+ *  propose  — put a time on the table (also used to counter-propose and,
+ *             once the match is agreed, to ask for the one reschedule).
+ *  accept   — agree to the opponent's current proposal.
+ *
+ * Rules: the time must lie inside [max(now+10min, round_opens_at),
+ * window close]. Only pending matches with both players known. A player
+ * cannot accept their own proposal. Once agreed, a new proposal counts as
+ * a reschedule (max 1 per match) and must be accepted by the other side;
+ * the agreed time is kept until then.
+ */
+export async function scheduleMatch({ matchId, userId, action, at }) {
+  if (!UUID_RE.test(matchId)) throw new ApiError(400, 'Invalid match id');
+  if (!['propose', 'accept'].includes(action)) throw new ApiError(400, "action must be 'propose' or 'accept'");
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows: [m] } = await client.query('SELECT * FROM public.matches WHERE id = $1 FOR UPDATE', [matchId]);
+    if (!m) { await client.query('COMMIT'); throw new ApiError(404, 'Match not found'); }
+    if (m.player1_id !== userId && m.player2_id !== userId) { await client.query('COMMIT'); throw new ApiError(403, 'Only the two players can schedule this match'); }
+    if (m.status !== 'pending') { await client.query('COMMIT'); throw new ApiError(409, 'This match has already started'); }
+    if (!m.player1_id || !m.player2_id || !m.round_opens_at) { await client.query('COMMIT'); throw new ApiError(409, 'Your opponent is not known yet'); }
+
+    const opens = new Date(m.round_opens_at).getTime();
+    const closes = opens + ROUND_WINDOW_MS;
+    const now = Date.now();
+    if (now >= closes) { await client.query('COMMIT'); throw new ApiError(409, 'The scheduling window for this round has closed'); }
+    const opponentId = m.player1_id === userId ? m.player2_id : m.player1_id;
+
+    let updated;
+    if (action === 'accept') {
+      if (!m.proposed_at || !m.proposed_by) { await client.query('COMMIT'); throw new ApiError(409, 'There is no proposal to accept'); }
+      if (m.proposed_by === userId) { await client.query('COMMIT'); throw new ApiError(409, 'You cannot accept your own proposal. Wait for your opponent.'); }
+      if (new Date(m.proposed_at).getTime() <= now) { await client.query('COMMIT'); throw new ApiError(409, 'That time has already passed'); }
+      const isReschedule = !!m.scheduled_at;
+      ({ rows: [updated] } = await client.query(
+        `UPDATE public.matches
+            SET scheduled_at = proposed_at, proposed_at = NULL, proposed_by = NULL,
+                reschedule_count = reschedule_count + $2
+          WHERE id = $1 RETURNING *`,
+        [m.id, isReschedule ? 1 : 0],
+      ));
+      const c = await matchContext(client, updated);
+      const payload = { tournament_title: c.tournament_title, round: m.match_round, scheduled_at: updated.scheduled_at, match_id: m.id };
+      await notify(client, { userId: opponentId, template: 'schedule_agreed', payload: { ...payload, opponent_username: userId === m.player1_id ? c.p1_username : c.p2_username } });
+      await notify(client, { userId, template: 'schedule_agreed', payload: { ...payload, opponent_username: userId === m.player1_id ? c.p2_username : c.p1_username } });
+    } else {
+      const t = at ? new Date(at).getTime() : NaN;
+      if (!Number.isFinite(t)) { await client.query('COMMIT'); throw new ApiError(400, 'at must be an ISO date-time'); }
+      const earliest = Math.max(now + MIN_LEAD_MS, opens);
+      if (t < earliest) { await client.query('COMMIT'); throw new ApiError(400, 'Pick a time at least 10 minutes from now and not before the round opens'); }
+      if (t > closes) { await client.query('COMMIT'); throw new ApiError(400, `Pick a time before the round window closes (${new Date(closes).toISOString()})`); }
+      if (m.scheduled_at && m.reschedule_count >= MAX_RESCHEDULES) { await client.query('COMMIT'); throw new ApiError(409, 'This match has already been rescheduled once. The agreed time stands.'); }
+      if (m.scheduled_at && new Date(m.scheduled_at).getTime() <= now) { await client.query('COMMIT'); throw new ApiError(409, 'The agreed time has arrived. The match is starting.'); }
+      ({ rows: [updated] } = await client.query(
+        `UPDATE public.matches SET proposed_at = $2, proposed_by = $3 WHERE id = $1 RETURNING *`,
+        [m.id, new Date(t).toISOString(), userId],
+      ));
+      const c = await matchContext(client, updated);
+      await notify(client, {
+        userId: opponentId,
+        template: 'schedule_proposed',
+        payload: {
+          tournament_title: c.tournament_title, round: m.match_round, proposed_at: updated.proposed_at, match_id: m.id,
+          opponent_username: userId === m.player1_id ? c.p1_username : c.p2_username,
+          is_reschedule: !!m.scheduled_at, had_counter: !!m.proposed_at,
+        },
+      });
+    }
+    await client.query('COMMIT');
+    return { match_id: m.id, ...scheduleView(updated) };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+export { scheduleView };
 
 // ---------------------------------------------------------------------------
 // Completion & advancement
@@ -219,11 +310,20 @@ async function completeMatchTx(client, match, winnerId) {
   );
   const nextMatchNumber = Math.ceil(match.match_number / 2);
   const nextCol = match.match_number % 2 === 1 ? 'player1_id' : 'player2_id';
-  await client.query(
+  const { rows: [nextMatch] } = await client.query(
     `UPDATE public.matches SET ${nextCol} = $3
-     WHERE tournament_id = $1 AND match_round = $2 AND match_number = $4`,
+     WHERE tournament_id = $1 AND match_round = $2 AND match_number = $4
+     RETURNING id, player1_id, player2_id, round_opens_at`,
     [match.tournament_id, match.match_round + 1, winnerId, nextMatchNumber],
   );
+  // Both players known: the 24h scheduling window for that match opens now.
+  if (nextMatch && nextMatch.player1_id && nextMatch.player2_id && !nextMatch.round_opens_at) {
+    const { rows: [opened] } = await client.query(
+      `UPDATE public.matches SET round_opens_at = now() WHERE id = $1 RETURNING *`,
+      [nextMatch.id],
+    );
+    await notifyScheduleOpen(client, opened);
+  }
   await notifyMatchResult(client, match, winnerId);
 }
 

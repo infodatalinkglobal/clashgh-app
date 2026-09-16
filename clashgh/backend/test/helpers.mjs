@@ -173,10 +173,23 @@ export async function fillCup(api, pool, tournament, players) {
   if (t.status !== 'full') throw new Error(`expected 'full' after ${players.length} payments, got '${t.status}'`);
 }
 
-/** Move the tournament start into the past and activate round 1. */
+/**
+ * Move the tournament start into the past and let the 24h scheduling window
+ * of every open match lapse, then run activation (the "nobody agreed" path).
+ */
 export async function kickOff(pool, services, tournamentId) {
   await pool.query(`UPDATE public.tournaments SET closes_at = now() - interval '2 minutes', starts_at = now() - interval '1 minute' WHERE id = $1`, [tournamentId]);
+  await lapseWindows(pool, tournamentId);
   await services.activateDueMatches();
+}
+
+/** Pretend the scheduling window of every pending, fully-seated match has passed. */
+export async function lapseWindows(pool, tournamentId) {
+  await pool.query(
+    `UPDATE public.matches SET round_opens_at = now() - interval '25 hours'
+      WHERE tournament_id = $1 AND status = 'pending' AND player1_id IS NOT NULL AND player2_id IS NOT NULL`,
+    [tournamentId],
+  );
 }
 
 export async function activeMatches(pool, tournamentId, round) {

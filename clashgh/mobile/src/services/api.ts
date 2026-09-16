@@ -103,6 +103,7 @@ export interface Profile {
   created_at: string;
   host_status?: HostStatus;
   host_note?: string | null;
+  contact_phone?: string | null;
 }
 
 export type HostStatus = 'none' | 'pending' | 'approved' | 'suspended';
@@ -195,6 +196,18 @@ export interface MatchPlayerView {
   game_uid: string;
   pick: 'won' | 'lost' | 'draw' | 'dispute' | null;
   screenshot_url?: string | null;
+  /** Opponent's contact number; only present for the current opponent while the match is open. */
+  contact_phone?: string | null;
+}
+
+export interface MatchSchedule {
+  round_opens_at: string | null;
+  window_closes_at: string | null;
+  proposed_at: string | null;
+  proposed_by: string | null;
+  scheduled_at: string | null;
+  reschedule_count: number;
+  reschedules_left: number;
 }
 
 export interface MatchView {
@@ -213,6 +226,7 @@ export interface MatchView {
   player2: MatchPlayerView | null;
   winner_id: string | null;
   dispute_reason: string | null;
+  schedule: MatchSchedule;
 }
 
 export interface RegistrationView {
@@ -373,7 +387,11 @@ export const endpoints = {
       auth: true,
     }),
 
-  getMatch: (id: string) => api.request<MatchView>(`/matches/${id}`),
+  getMatch: (id: string) => api.request<MatchView>(`/matches/${id}`, { auth: true }),
+  scheduleMatch: (id: string, body: { action: 'propose'; at: string } | { action: 'accept' }) =>
+    api.request<MatchSchedule & { match_id: string }>(`/matches/${id}/schedule`, { method: 'POST', body, auth: true }),
+  updateContactPhone: (contact_phone: string | null) =>
+    api.request<{ contact_phone: string | null }>('/me', { method: 'PATCH', body: { contact_phone }, auth: true }),
   submitResult: (
     id: string,
     body: { pick: 'won' | 'lost' | 'draw' | 'dispute'; screenshot_url: string; reason?: string },

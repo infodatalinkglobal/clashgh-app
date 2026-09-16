@@ -62,6 +62,41 @@ export const TEMPLATES = {
     },
   }),
 
+  schedule_open: (u, p) => ({
+    push: {
+      title: `Schedule your round ${p.round} match`,
+      body: `You play ${p.opponent_username} in ${p.tournament_title}. Agree a time before ${when(p.window_closes_at)}.`,
+    },
+    email: {
+      subject: `Schedule your ${p.tournament_title} match with ${p.opponent_username}`,
+      text: [
+        `Hi ${u.username ?? 'player'},`,
+        ``,
+        `Your round ${p.round} opponent in "${p.tournament_title}" is ${p.opponent_username}.`,
+        ``,
+        `Open the match in ClashGH and propose a time. You both have until ${when(p.window_closes_at)} to agree and play. If nobody proposes, the match starts automatically at that time.`,
+        ``,
+        `ClashGH`,
+      ].join('\n'),
+    },
+  }),
+
+  schedule_proposed: (u, p) => ({
+    push: {
+      title: p.is_reschedule ? `${p.opponent_username} asked to move your match` : `${p.opponent_username} proposed a time`,
+      body: `${p.tournament_title}, round ${p.round}: ${when(p.proposed_at)}. Accept or suggest another time.`,
+    },
+    email: null,
+  }),
+
+  schedule_agreed: (u, p) => ({
+    push: {
+      title: `Match time agreed`,
+      body: `${p.tournament_title}, round ${p.round} vs ${p.opponent_username}: ${when(p.scheduled_at)}. The room code appears then.`,
+    },
+    email: null,
+  }),
+
   opponent_submitted: (u, p) => ({
     push: {
       title: `${p.opponent_username} submitted their result`,
@@ -84,8 +119,8 @@ export const TEMPLATES = {
 
   start_reminder: (u, p) => ({
     push: {
-      title: `${p.tournament_title} starts in ${p.minutes} min`,
-      body: `Be online and ready — your room code arrives at kick-off.`,
+      title: `${p.tournament_title} opens in ${p.minutes} min`,
+      body: `Round 1 scheduling opens then. Agree a time with your opponent in the match room.`,
     },
     email: null,
   }),
@@ -93,7 +128,7 @@ export const TEMPLATES = {
   lobby_full: (u, p) => ({
     push: {
       title: `${p.tournament_title} is full`,
-      body: `Bracket is set. Round 1 starts ${when(p.starts_at)} — you'll get your room code then.`,
+      body: `Bracket is set. Open your round 1 match to agree a time with your opponent. Scheduling opens ${when(p.starts_at)}.`,
     },
     email: null,
   }),
