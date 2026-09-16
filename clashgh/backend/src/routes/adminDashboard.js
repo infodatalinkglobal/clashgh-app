@@ -140,11 +140,13 @@ adminDashboardRouter.get('/admin/tournaments/:id', asyncHandler(async (req, res)
       FROM public.registrations r JOIN public.users u ON u.id = r.user_id
       WHERE r.tournament_id = $1 ORDER BY r.seed NULLS LAST, r.created_at`, [id]),
     pool.query(`
-      SELECT m.*, u1.username AS player1_username, u2.username AS player2_username, w.username AS winner_username
+      SELECT m.*, u1.username AS player1_username, u2.username AS player2_username, w.username AS winner_username,
+             pb.username AS proposed_by_username
       FROM public.matches m
       LEFT JOIN public.users u1 ON u1.id = m.player1_id
       LEFT JOIN public.users u2 ON u2.id = m.player2_id
       LEFT JOIN public.users w ON w.id = m.winner_id
+      LEFT JOIN public.users pb ON pb.id = m.proposed_by
       WHERE m.tournament_id = $1 ORDER BY m.match_round, m.match_number`, [id]),
     pool.query(`
       SELECT tx.*, u.username FROM public.transactions tx JOIN public.users u ON u.id = tx.user_id
@@ -175,6 +177,7 @@ adminDashboardRouter.get('/admin/disputes', asyncHandler(async (req, res) => {
       GROUP BY p.user_id)
     SELECT m.id, m.tournament_id, t.title, t.game, t.entry_fee_pesewas, m.match_round, m.match_number,
            m.dispute_reason, m.room_code, m.started_at, m.deadline_at, m.updated_at,
+           m.scheduled_at, m.round_opens_at, m.reschedule_count,
            jsonb_build_object('id', u1.id, 'username', u1.username, 'pick', m.player1_pick, 'screenshot_url', m.player1_screenshot_url,
                               'game_uid', r1.game_uid, 'is_banned', u1.is_banned,
                               'dispute_rate', CASE WHEN coalesce(x1.played,0) > 0 THEN round(x1.disputed::numeric / x1.played, 2) ELSE 0 END,
@@ -204,6 +207,51 @@ adminDashboardRouter.get('/admin/disputes', asyncHandler(async (req, res) => {
   });
   flagged.sort((a, b) => (a.priority === b.priority ? 0 : a.priority === 'high' ? -1 : 1));
   res.json({ success: true, data: { disputes: flagged, threshold: { rate: HIGH_DISPUTE_RATE, min_matches: HIGH_DISPUTE_MIN_MATCHES } }, message: 'Dispute queue' });
+}));
+
+// ---------------------------------------------------------------------------
+// GET /admin/schedule: every match in a live tournament that has not
+// finished, with its scheduling state so an admin can see who is stalling.
+//   state: agreed | proposed | unscheduled | active | awaiting_results
+//   overdue: window closed (or agreed time passed) and still not played
+// ---------------------------------------------------------------------------
+adminDashboardRouter.get('/admin/schedule', asyncHandler(async (req, res) => {
+  const { rows } = await pool.query(`
+    SELECT m.id, m.tournament_id, t.title, t.game, m.match_round, m.match_number, m.status,
+           m.round_opens_at, m.round_opens_at + make_interval(hours => $1) AS window_closes_at,
+           m.proposed_at, m.scheduled_at, m.reschedule_count, m.started_at, m.deadline_at,
+           u1.username AS player1_username, u2.username AS player2_username, pb.username AS proposed_by_username,
+           u1.contact_phone AS player1_contact, u2.contact_phone AS player2_contact,
+           (m.match_round = (SELECT max(match_round) FROM public.matches WHERE tournament_id = m.tournament_id)) AS is_final
+    FROM public.matches m
+    JOIN public.tournaments t ON t.id = m.tournament_id
+    LEFT JOIN public.users u1 ON u1.id = m.player1_id
+    LEFT JOIN public.users u2 ON u2.id = m.player2_id
+    LEFT JOIN public.users pb ON pb.id = m.proposed_by
+    WHERE t.status = 'in_progress' AND m.status IN ('pending','active','awaiting_results')
+      AND m.player1_id IS NOT NULL AND m.player2_id IS NOT NULL
+    ORDER BY coalesce(m.scheduled_at, m.proposed_at, m.round_opens_at) ASC, t.title, m.match_round, m.match_number`,
+    [env.roundWindowHours]);
+  const now = Date.now();
+  const matches = rows.map((m) => {
+    let state = 'unscheduled';
+    if (m.status === 'active') state = 'active';
+    else if (m.status === 'awaiting_results') state = 'awaiting_results';
+    else if (m.scheduled_at) state = 'agreed';
+    else if (m.proposed_at) state = 'proposed';
+    const due = m.status === 'pending' ? (m.scheduled_at ?? m.proposed_at ?? m.window_closes_at) : m.deadline_at;
+    const overdue = !!due && new Date(due).getTime() < now;
+    return { ...m, state, overdue };
+  });
+  const counts = {
+    total: matches.length,
+    unscheduled: matches.filter((m) => m.state === 'unscheduled').length,
+    proposed: matches.filter((m) => m.state === 'proposed').length,
+    agreed: matches.filter((m) => m.state === 'agreed').length,
+    playing: matches.filter((m) => m.state === 'active' || m.state === 'awaiting_results').length,
+    overdue: matches.filter((m) => m.overdue).length,
+  };
+  res.json({ success: true, data: { matches, counts, round_window_hours: env.roundWindowHours }, message: 'Match schedule' });
 }));
 
 // ---------------------------------------------------------------------------

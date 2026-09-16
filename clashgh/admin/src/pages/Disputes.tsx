@@ -21,9 +21,9 @@ export function DisputesPage() {
     <>
       <h1>Disputes</h1>
       <div className="sub">
-        {disputes.length} waiting · oldest first · <span className="badge red">priority</span> = a player with ≥{Math.round(threshold.rate * 100)}% dispute rate over ≥{threshold.min_matches} matches
+        {disputes.length} waiting, oldest first. <span className="badge red">priority</span> marks a player with a dispute rate of {Math.round(threshold.rate * 100)}% or more over at least {threshold.min_matches} matches.
       </div>
-      {disputes.length === 0 ? <div className="card muted">No disputed matches. 🎉</div> : disputes.map((d) => <DisputeCard key={d.id} d={d} onDone={reload} />)}
+      {disputes.length === 0 ? <div className="card muted">No disputed matches.</div> : disputes.map((d) => <DisputeCard key={d.id} d={d} onDone={reload} />)}
     </>
   );
 }
@@ -43,7 +43,7 @@ function DisputeCard({ d, onDone }: { d: Dispute; onDone: () => void }) {
         <b className="click" style={{ cursor: 'pointer' }} onClick={() => go({ page: 'tournament', id: d.tournament_id })}>{d.title}</b>
         <span className="badge">{GAME[d.game]}</span>
         <span className="muted">Round {d.match_round} · Match {d.match_number}{d.is_final ? ' · FINAL' : ''}</span>
-        <span className="faint">room {d.room_code ?? 'n/a'} · started {when(d.started_at)} · window closed {when(d.deadline_at)}</span>
+        <span className="faint">room {d.room_code ?? 'n/a'} · agreed time {d.scheduled_at ? when(d.scheduled_at) : 'none'}{d.reschedule_count > 0 ? ' (rescheduled once)' : ''} · started {when(d.started_at)} · window closed {when(d.deadline_at)}</span>
         <span className="faint right">waiting {ago(d.updated_at)}</span>
       </div>
       <div className="muted" style={{ marginBottom: 12 }}><b>Reason:</b> {d.dispute_reason ?? 'n/a'}</div>

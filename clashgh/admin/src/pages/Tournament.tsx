@@ -40,7 +40,7 @@ export function TournamentPage({ id }: { id: string }) {
       <div className="card" style={{ padding: 0 }}>
         {matches.length === 0 ? <div className="center">Bracket not generated yet.</div> : (
           <table>
-            <thead><tr><th>Match</th><th>Player 1</th><th>Player 2</th><th>Status</th><th>Room</th><th>Picks</th><th>Winner</th><th>Window</th></tr></thead>
+            <thead><tr><th>Match</th><th>Player 1</th><th>Player 2</th><th>Status</th><th>Room</th><th>Picks</th><th>Winner</th><th>Scheduled</th><th>Window</th></tr></thead>
             <tbody>
               {matches.map((m) => (
                 <tr key={m.id}>
@@ -51,6 +51,7 @@ export function TournamentPage({ id }: { id: string }) {
                   <td className="mono">{m.room_code ?? 'n/a'}</td>
                   <td className="faint">{m.player1_pick ?? '·'} / {m.player2_pick ?? '·'}{m.player1_screenshot_url ? <> · <a href={m.player1_screenshot_url} target="_blank" rel="noreferrer">shot 1</a></> : null}{m.player2_screenshot_url ? <> · <a href={m.player2_screenshot_url} target="_blank" rel="noreferrer">shot 2</a></> : null}</td>
                   <td>{m.winner_username ? <b>{m.winner_username}</b> : 'n/a'}</td>
+                  <td className="faint">{scheduleCell(m)}</td>
                   <td className="faint">{m.started_at ? `${when(m.started_at)} to ${when(m.deadline_at)}` : 'n/a'}</td>
                 </tr>
               ))}
@@ -108,6 +109,14 @@ export function TournamentPage({ id }: { id: string }) {
       </div>
     </>
   );
+}
+
+function scheduleCell(m: TournamentDetail['matches'][number]) {
+  if (m.status === 'completed') return m.scheduled_at ? when(m.scheduled_at) : 'n/a';
+  if (m.scheduled_at) return <>{when(m.scheduled_at)}{m.reschedule_count > 0 ? <div>rescheduled once</div> : null}</>;
+  if (m.proposed_at) return <>{when(m.proposed_at)}<div>proposed by {m.proposed_by_username ?? 'a player'}, awaiting reply</div></>;
+  if (m.round_opens_at && m.status === 'pending') return <>no time yet<div>window from {when(m.round_opens_at)}</div></>;
+  return 'n/a';
 }
 
 function K({ l, v, s }: { l: string; v: string; s?: string }) {

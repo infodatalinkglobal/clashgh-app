@@ -5,6 +5,7 @@ import { OverviewPage } from './pages/Overview';
 import { TournamentsPage } from './pages/Tournaments';
 import { TournamentPage } from './pages/Tournament';
 import { DisputesPage } from './pages/Disputes';
+import { SchedulePage } from './pages/Schedule';
 import { PlayersPage } from './pages/Players';
 import { HostsPage } from './pages/Hosts';
 import { AnalyticsPage } from './pages/Analytics';
@@ -19,6 +20,7 @@ export type Route =
   | { page: 'tournaments' }
   | { page: 'tournament'; id: string }
   | { page: 'disputes' }
+  | { page: 'schedule' }
   | { page: 'players' }
   | { page: 'hosts' }
   | { page: 'analytics' }
@@ -28,7 +30,7 @@ function parseHash(): Route {
   const h = location.hash.replace(/^#\/?/, '');
   const [page, id] = h.split('/');
   if (page === 'tournaments' && id) return { page: 'tournament', id };
-  if (['tournaments', 'disputes', 'players', 'hosts', 'analytics', 'audit'].includes(page)) return { page } as Route;
+  if (['tournaments', 'disputes', 'schedule', 'players', 'hosts', 'analytics', 'audit'].includes(page)) return { page } as Route;
   return { page: 'overview' };
 }
 
@@ -89,6 +91,7 @@ export default function App() {
         {nav('overview', 'Overview', (counts?.disputed_matches ?? 0) + (counts?.failed_transfers ?? 0) + (counts?.lobbies_past_close ?? 0))}
         {nav('tournaments', 'Tournaments', counts?.live_tournaments, 'gold')}
         {nav('disputes', 'Disputes', counts?.disputed_matches)}
+        {nav('schedule', 'Schedule')}
         {nav('players', 'Players')}
         {nav('hosts', 'Hosts', counts?.pending_hosts, 'gold')}
         {nav('analytics', 'Analytics')}
@@ -102,6 +105,7 @@ export default function App() {
         {route.page === 'tournaments' && <TournamentsPage />}
         {route.page === 'tournament' && <TournamentPage id={route.id} />}
         {route.page === 'disputes' && <DisputesPage />}
+        {route.page === 'schedule' && <SchedulePage />}
         {route.page === 'players' && <PlayersPage />}
         {route.page === 'hosts' && <HostsPage />}
         {route.page === 'analytics' && <AnalyticsPage />}

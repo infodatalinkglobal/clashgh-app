@@ -81,14 +81,17 @@ export interface AdminTournament {
 export interface TournamentDetail {
   tournament: AdminTournament;
   registrations: { id: string; user_id: string; username: string; phone: string | null; momo_provider: string | null; is_banned: boolean; game_uid: string; payment_status: 'pending' | 'paid' | 'refunded'; payment_reference: string; seed: number | null; created_at: string }[];
-  matches: { id: string; match_round: number; match_number: number; status: MStatus; player1_id: string | null; player2_id: string | null; player1_username: string | null; player2_username: string | null; winner_id: string | null; winner_username: string | null; room_code: string | null; player1_pick: string | null; player2_pick: string | null; player1_screenshot_url: string | null; player2_screenshot_url: string | null; dispute_reason: string | null; started_at: string | null; deadline_at: string | null }[];
+  matches: { id: string; match_round: number; match_number: number; status: MStatus; player1_id: string | null; player2_id: string | null; player1_username: string | null; player2_username: string | null; winner_id: string | null; winner_username: string | null; room_code: string | null; player1_pick: string | null; player2_pick: string | null; player1_screenshot_url: string | null; player2_screenshot_url: string | null; dispute_reason: string | null; started_at: string | null; deadline_at: string | null; scheduled_at: string | null; proposed_at: string | null; proposed_by_username: string | null; round_opens_at: string | null; reschedule_count: number }[];
   ledger: { id: string; username: string; type: string; amount_pesewas: number; status: string; direction: string; description: string; attempts: number; created_at: string }[];
   audit: AuditRow[];
 }
 
 export interface DisputePlayer { id: string; username: string; pick: string | null; screenshot_url: string | null; game_uid: string; is_banned: boolean; dispute_rate: string | number; matches_played: number }
-export interface Dispute { id: string; tournament_id: string; title: string; game: Game; entry_fee_pesewas: number; match_round: number; match_number: number; dispute_reason: string | null; room_code: string | null; started_at: string | null; deadline_at: string | null; updated_at: string; player1: DisputePlayer | null; player2: DisputePlayer | null; is_final: boolean; priority: 'high' | 'normal' }
+export interface Dispute { id: string; tournament_id: string; title: string; game: Game; entry_fee_pesewas: number; match_round: number; match_number: number; dispute_reason: string | null; room_code: string | null; started_at: string | null; deadline_at: string | null; updated_at: string; scheduled_at: string | null; round_opens_at: string | null; reschedule_count: number; player1: DisputePlayer | null; player2: DisputePlayer | null; is_final: boolean; priority: 'high' | 'normal' }
 
+export type ScheduleState = 'unscheduled' | 'proposed' | 'agreed' | 'active' | 'awaiting_results';
+export interface ScheduleRow { id: string; tournament_id: string; title: string; game: Game; match_round: number; match_number: number; status: MStatus; round_opens_at: string | null; window_closes_at: string | null; proposed_at: string | null; scheduled_at: string | null; reschedule_count: number; started_at: string | null; deadline_at: string | null; player1_username: string | null; player2_username: string | null; proposed_by_username: string | null; player1_contact: string | null; player2_contact: string | null; is_final: boolean; state: ScheduleState; overdue: boolean }
+export interface ScheduleData { matches: ScheduleRow[]; counts: { total: number; unscheduled: number; proposed: number; agreed: number; playing: number; overdue: number }; round_window_hours: number }
 export interface Player { id: string; username: string | null; email: string; phone: string | null; momo_provider: string | null; phone_verified: boolean; role: string; is_banned: boolean; created_at: string; matches_completed: number; wins: number; open_disputes: number; resolved_disputes: number; dispute_rate: string | number; fees_paid_pesewas: number; winnings_pesewas: number; flagged: boolean }
 
 export interface Analytics {
@@ -116,6 +119,7 @@ export const api = {
   createTournament: (body: Record<string, unknown>) => request<{ tournament: AdminTournament }>('/tournaments', { method: 'POST', body }),
   cancelTournament: (id: string) => request<{ refunded_count: number }>(`/admin/tournaments/${id}/cancel`, { method: 'POST' }),
   payout: (id: string, force = false) => request<unknown>(`/admin/tournaments/${id}/payout${force ? '?force=true' : ''}`, { method: 'POST' }),
+  schedule: () => request<ScheduleData>('/admin/schedule'),
   disputes: () => request<{ disputes: Dispute[]; threshold: { rate: number; min_matches: number } }>('/admin/disputes'),
   resolve: (matchId: string, body: { resolution: 'award' | 'replay' | 'refund'; winner_id?: string }) => request<unknown>(`/admin/matches/${matchId}/resolve`, { method: 'POST', body }),
   players: (q: string) => request<{ players: Player[] }>(`/admin/players${q ? `?q=${encodeURIComponent(q)}` : ''}`),
