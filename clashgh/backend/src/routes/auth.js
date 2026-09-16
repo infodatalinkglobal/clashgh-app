@@ -23,6 +23,8 @@ function profilePayload(user) {
     role: user.role,
     is_banned: user.is_banned,
     created_at: user.created_at,
+    host_status: user.host_status ?? 'none',
+    host_note: user.host_note ?? null,
   };
 }
 
