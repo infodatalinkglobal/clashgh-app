@@ -16,7 +16,7 @@ Accounts and keys, in the order you will be waiting on them:
    `PAYSTACK_MODE=live`. Register the webhook URL `https://clashgh.app/api/paystack/webhook`
    in the Paystack dashboard (Settings, API keys and webhooks). Turn off "Transfers OTP"
    in Paystack preferences or payouts will sit waiting for a code.
-2. Supabase project: enable Google and Email (magic link) providers, add
+2. Supabase project (done 2026-09-17: https://hrfqgmvnoavyxpumjbad.supabase.co, schema applied, Google enabled, client id 1095848345509-ke2or1o0tb0jkiqr5udcqi440gl59j80.apps.googleusercontent.com): enable Google and Email (magic link) providers, add
    `https://clashgh.app/app/auth/callback` to the redirect allow list, run migration
    `002_supabase_auth_integration.sql`. Set `AUTH_PROVIDER=supabase`, `SUPABASE_URL`,
    `SUPABASE_JWT_SECRET`, `DATABASE_URL` (Supabase Postgres, pooled connection string).
