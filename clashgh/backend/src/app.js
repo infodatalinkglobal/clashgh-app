@@ -20,6 +20,21 @@ export function createApp() {
     app.post('/api/paystack/webhook', express.raw({ type: () => true }), paystackWebhookHandler);
   }
 
+  if (env.nodeEnv !== 'production') {
+    app.use((req, res, next) => {
+      const origin = req.headers.origin;
+      const isLocalExpoOrigin = origin && /^http:\/\/(localhost|127\.0\.0\.1):(8081|19000|19006)$/.test(origin);
+      if (isLocalExpoOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+        res.setHeader('Vary', 'Origin');
+      }
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
+      return next();
+    });
+  }
+
   app.use(express.json());
 
   app.get('/api/health', (req, res) => {

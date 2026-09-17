@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 /**
  * App configuration.
  *
@@ -12,7 +14,8 @@ export type AuthMode = 'stub' | 'supabase';
 
 export const Config = {
   apiUrl:
-    process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:3000/api',
+    process.env.EXPO_PUBLIC_API_URL ??
+    (Platform.OS === 'web' ? 'http://localhost:3000/api' : 'http://10.0.2.2:3000/api'),
 
   /**
    * 'stub'  → dev mode: the backend's /api/dev/auth endpoints issue the
