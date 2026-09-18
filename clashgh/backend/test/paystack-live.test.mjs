@@ -79,7 +79,7 @@ async function player(name, { admin = false } = {}) {
   return { id, token };
 }
 
-const sign = (raw) => crypto.createHmac('sha512', WEBHOOK_SECRET).update(raw).digest('base64');
+const sign = (raw) => crypto.createHmac('sha512', WEBHOOK_SECRET).update(raw).digest('hex');
 
 test('join initialises a Paystack Mobile Money checkout with our reference and a callback back to the tournament', async () => {
   const admin = await player('admin', { admin: true });

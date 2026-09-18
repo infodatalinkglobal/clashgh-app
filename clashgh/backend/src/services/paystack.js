@@ -118,21 +118,23 @@ export async function initTransfer({ recipientCode, amountPesewas, reason, refer
 }
 
 /**
- * Verify a Paystack webhook: base64 HMAC-SHA-512 of the RAW body with
- * PAYSTACK_WEBHOOK_SECRET must equal the x-paystack-signature header.
+ * Verify a Paystack webhook: hex HMAC-SHA-512 of the RAW body with
+ * PAYSTACK_WEBHOOK_SECRET (Paystack signs with your secret key, so set it
+ * to the same value as PAYSTACK_SECRET_KEY) must equal x-paystack-signature.
+ * Paystack's digest is hex (docs: `.digest('hex')`); base64 is accepted too
+ * so older mocks keep working.
  * `rawBody` is a Buffer (the route receives it via express.raw so the
  * signature is checked on exactly the bytes that arrived).
  */
 export function verifyWebhookSignature(rawBody, signatureHeader) {
   if (!signatureHeader || !Buffer.isBuffer(rawBody)) return false;
-  const expected = crypto
-    .createHmac('sha512', env.paystackWebhookSecret)
-    .update(rawBody)
-    .digest('base64');
-  const given = Buffer.from(signatureHeader, 'utf8');
-  const want = Buffer.from(expected, 'utf8');
-  if (given.length !== want.length) return false;
-  return crypto.timingSafeEqual(given, want);
+  const digest = crypto.createHmac('sha512', env.paystackWebhookSecret).update(rawBody).digest();
+  const given = Buffer.from(String(signatureHeader).trim(), 'utf8');
+  for (const encoding of ['hex', 'base64']) {
+    const want = Buffer.from(digest.toString(encoding), 'utf8');
+    if (given.length === want.length && crypto.timingSafeEqual(given, want)) return true;
+  }
+  return false;
 }
 
 export const paystack = { initCharge, verifyCharge, resolveMomoAccount, createTransferRecipient, initTransfer, verifyWebhookSignature };

@@ -34,7 +34,7 @@ const recipients = new Map();
 const approved = new Set();
 
 function sign(rawBody) {
-  return crypto.createHmac('sha512', SECRET).update(rawBody).digest('base64');
+  return crypto.createHmac('sha512', SECRET).update(rawBody).digest('hex');
 }
 
 function sendWebhook(eventType, data) {
