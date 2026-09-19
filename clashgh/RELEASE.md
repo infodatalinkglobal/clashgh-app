@@ -6,42 +6,70 @@ The plan is to launch on the web only (https://clashgh.app, the player app at /a
 the phone browser and can be added to the home screen), earn, and only then ship the Play
 Store app. Nothing in the code changes between the two; the app build is the same code.
 
-## 1. Web launch checklist
+## 1. Web launch checklist (phone only, no terminal needed)
 
-Accounts and keys, in the order you will be waiting on them:
+Status 2026-09-18: Supabase project live (https://hrfqgmvnoavyxpumjbad.supabase.co, schema
+applied, Google provider on, web client id in render.yaml). Everything public is already in
+`render.yaml`; only the secrets below are typed into dashboards. Do the steps in this order.
 
-1. Paystack Ghana business account, live keys, Mobile Money collections and transfers
-   enabled. This takes the longest (business registration, ID). Set
-   `PAYSTACK_SECRET_KEY`, `PAYSTACK_PUBLIC_KEY`, `PAYSTACK_WEBHOOK_SECRET`,
-   `PAYSTACK_MODE=live`. Register the webhook URL `https://clashgh.app/api/paystack/webhook`
-   in the Paystack dashboard (Settings, API keys and webhooks). Turn off "Transfers OTP"
-   in Paystack preferences or payouts will sit waiting for a code.
-2. Supabase project (done 2026-09-17: https://hrfqgmvnoavyxpumjbad.supabase.co, schema applied, Google enabled, client id 1095848345509-ke2or1o0tb0jkiqr5udcqi440gl59j80.apps.googleusercontent.com): enable Google and Email (magic link) providers, add
-   `https://clashgh.app/app/auth/callback` to the redirect allow list, run migration
-   `002_supabase_auth_integration.sql`. Set `AUTH_PROVIDER=supabase`, `SUPABASE_URL`,
-   `SUPABASE_JWT_SECRET`, `DATABASE_URL` (Supabase Postgres, pooled connection string).
-   Mobile build env: `EXPO_PUBLIC_AUTH_MODE=supabase`, `EXPO_PUBLIC_SUPABASE_URL`,
-   `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`,
-   `EXPO_PUBLIC_API_URL=https://clashgh.app/api`, `EXPO_PUBLIC_PAYSTACK_MODE=live`
-   (these are baked in at `npm run web:export`, so set them in Render's build env).
-3. Resend account and a verified sending domain (clashgh.app): `MAIL_PROVIDER=resend`,
-   `RESEND_API_KEY`, `MAIL_FROM=ClashGH <no-reply@clashgh.app>`.
-4. Cloudinary free tier for score screenshots: `SCREENSHOT_STORAGE=cloudinary` and the
-   three `CLOUDINARY_*` keys.
-5. Render: create the blueprint from `render.yaml`, add the custom domains `clashgh.app`
-   and `www.clashgh.app`, set the DNS records it shows you (A record for the apex, CNAME
-   for www), then fill every `sync: false` env var. Set `SITE_LEGAL_NAME` to your
-   registered business name and `CORS_ORIGINS` to the admin panel URL.
-6. Admin panel: deploy `clashgh/admin` as a static site (Render static site or Netlify) at
-   `https://admin.clashgh.app` with `VITE_API_URL=https://clashgh.app/api`. Make your own
-   user an admin: `UPDATE public.users SET role='admin' WHERE email='you@...'`.
+### 1.1 Supabase (5 min)
+- Project page, **Connect** button, **Transaction pooler** URI (port 6543). Fill in the database
+  password. Keep it as `DATABASE_URL`. If the password is lost: Project Settings, Database,
+  Reset database password.
+- Authentication, URL Configuration: Site URL `https://clashgh.onrender.com/app`. Redirect URLs:
+  `https://clashgh.onrender.com/app/auth/callback` and `https://clashgh-admin.onrender.com`.
+  (Add the custom domain versions later.)
+
+### 1.2 Render (15 min, Starter plan 7 USD/month; the free plan sleeps and breaks match timers)
+- render.com, sign up with the GitHub account that owns the repo, allow access to `clashgh-app`.
+- Dashboard, **New**, **Blueprint**, pick the repo, branch `arena/01a0a65e-clashgh-app`. Render reads
+  `render.yaml` and creates two services: `clashgh` (API plus web app) and `clashgh-admin`.
+- It asks for the `sync: false` values. Fill now: `DATABASE_URL` (1.1), `SITE_LEGAL_NAME`
+  (your registered business name, or your full name until registered), `SITE_CONTACT_EMAIL`,
+  `ADMIN_ALERT_EMAIL` (your Gmail). Leave `SITE_ORIGIN`, `SITE_CONTACT_PHONE`,
+  `ANDROID_SHA256_FINGERPRINTS` empty.
+- Paystack, Cloudinary and Resend values come from 1.3 to 1.5. Until they exist the API refuses to
+  start in production (by design). For a first boot without them, add the env var
+  `ALLOW_UNSAFE_PRODUCTION=1` together with `PAYSTACK_MODE=stub`, `MAIL_PROVIDER=mock`,
+  `SCREENSHOT_STORAGE=local`; remove all four before inviting anyone.
+- After the first deploy: open https://clashgh.onrender.com/app, sign in with Google, set a
+  username. Then in Supabase, Table Editor, `users`, set your row's `role` to `admin`.
+  https://clashgh-admin.onrender.com then lets you in with the same Google account.
+
+### 1.3 Paystack (business verification takes 1 to 3 days)
+- dashboard.paystack.com, Compliance: submit business details and ID. Once live is enabled:
+  Settings, API Keys and Webhooks. `PAYSTACK_SECRET_KEY` = live secret key,
+  `PAYSTACK_WEBHOOK_SECRET` = the same live secret key (Paystack signs webhooks with it),
+  `PAYSTACK_PUBLIC_KEY` = live public key.
+  Webhook URL: `https://clashgh.onrender.com/api/paystack/webhook`.
+- Settings, Preferences: turn **off** "Confirm transfers with OTP" or payouts will hang.
+- Fund the Paystack balance with a small amount so the first payouts and refunds can go out.
+
+### 1.4 Cloudinary (5 min, free tier)
+- cloudinary.com, sign up, Dashboard shows Cloud name, API key, API secret. Paste as the three
+  `CLOUDINARY_*` vars in the `clashgh` service.
+
+### 1.5 Resend (5 min now, domain later)
+- resend.com, sign up, API Keys, create one: `RESEND_API_KEY`. `MAIL_FROM` is preset to
+  Resend's shared sender `onboarding@resend.dev`, which only delivers to your own Resend
+  account email until you verify a domain. Buy the domain (1.6) before the beta so players get mail.
+
+### 1.6 Domain (optional for beta, required for public launch)
+- Buy a domain. In Render, `clashgh` service, Settings, Custom Domains: add it and `www`, set the
+  DNS records Render shows. Then set `SITE_ORIGIN=https://yourdomain`, change
+  `EXPO_PUBLIC_API_URL` stays `/api`, change `VITE_API_URL` on the admin service to
+  `https://yourdomain/api`, add `https://yourdomain/app/auth/callback` in Supabase redirect
+  URLs, update the Paystack webhook URL, verify the domain in Resend and set
+  `MAIL_FROM=ClashGH <no-reply@yourdomain>`.
+- Google Cloud, OAuth consent screen: **Publish app** so any Gmail can sign in (in Testing
+  mode only listed test users can).
 
 The API refuses to boot in production if any of auth, payments, mail, screenshots, CORS or
-SITE_ORIGIN is still on a dev setting, and prints exactly what to fix.
+SITE_ORIGIN is still on a dev setting, and prints exactly what to fix in the Render logs.
 
 Smoke test on the live site before inviting anyone:
 
-- [ ] https://clashgh.app loads, /tournaments, /faq and /privacy render, /nope shows the 404 page.
+- [ ] https://clashgh.onrender.com loads, /tournaments, /faq and /privacy render, /nope shows the 404 page.
 - [ ] /app: sign in with Google on a phone, set username, add your MoMo number (the name comes back from Paystack).
 - [ ] Add to home screen on an Android phone; the icon and splash are ClashGH, it opens at /app.
 - [ ] Create a 10 cedi 4 player cup from admin. Join it from your phone: the Paystack page opens in the same tab, you approve on the phone, you land back on the tournament page and it says "You're in" within a few seconds.

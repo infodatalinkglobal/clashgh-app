@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api, token, type Profile } from '../lib/api';
+import { signInWithGoogle, takeErrorFromUrl } from '../lib/supabase';
 
 const MODE = (import.meta.env.VITE_AUTH_MODE as string | undefined) ?? 'stub';
 
@@ -11,14 +12,17 @@ const MODE = (import.meta.env.VITE_AUTH_MODE as string | undefined) ?? 'stub';
 export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
   const [email, setEmail] = useState('admin@clashgh.dev');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => takeErrorFromUrl());
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      if (MODE !== 'stub') throw new Error('Supabase admin sign-in is configured in production builds (VITE_AUTH_MODE=supabase). Use the Supabase magic-link flow.');
+      if (MODE !== 'stub') {
+        signInWithGoogle();
+        return;
+      }
       const r = await api.devSignIn(email.trim());
       const t = r.access_token ?? r.token;
       if (!t) throw new Error('No token returned');
@@ -41,12 +45,17 @@ export function Login({ onSignedIn }: { onSignedIn: (p: Profile) => void }) {
       <form className="card" onSubmit={submit}>
         <div className="brand" style={{ fontSize: 18 }}>CLASH<b>GH</b> <span className="faint">admin</span></div>
         <p className="muted" style={{ marginTop: 0 }}>Admins only. Every action here is written to the audit log.</p>
-        <div className="f">
-          <label>{MODE === 'stub' ? 'Dev identity (email)' : 'Email'}</label>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
-        </div>
+        {MODE === 'stub' ? (
+          <div className="f">
+            <label>Dev identity (email)</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
+          </div>
+        ) : null}
         {error ? <div className="err">{error}</div> : null}
-        <button className="btn p" disabled={busy} style={{ width: '100%' }}>{busy ? 'Signing in…' : 'Sign in'}</button>
+        <button className="btn p" disabled={busy} style={{ width: '100%' }}>
+          {busy ? 'Signing in' : MODE === 'stub' ? 'Sign in' : 'Continue with Google'}
+        </button>
+        {MODE !== 'stub' ? <p className="faint" style={{ marginBottom: 0 }}>Use the Google account that holds the admin role. Other accounts are refused.</p> : null}
         {MODE === 'stub' ? <p className="faint" style={{ marginBottom: 0 }}>Dev mode: the backend's AUTH_PROVIDER=stub issues the token. Seeded admin: admin@clashgh.dev</p> : null}
       </form>
     </div>

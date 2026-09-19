@@ -23,13 +23,15 @@ services:
     # domains:
     #   - clashgh.app
     #   - www.clashgh.app
+    autoDeploy: true
+    branch: arena/01a0a65e-clashgh-app
     envVars:
       - key: SITE_ORIGIN
         sync: false            # leave EMPTY until you own a domain: the API then uses Render's own https URL
       - key: SITE_LEGAL_NAME
         sync: false            # registered business name shown in footer, terms, schema
       - key: SITE_CONTACT_EMAIL
-        value: support@clashgh.app
+        sync: false            # e.g. your Gmail for now
       - key: SITE_CONTACT_PHONE
         sync: false            # optional, E.164 (+233...), shown on /contact and used for WhatsApp
       - key: NODE_ENV
@@ -45,9 +47,7 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
+        value: https://hrfqgmvnoavyxpumjbad.supabase.co
       - key: PAYSTACK_SECRET_KEY
         sync: false
       - key: PAYSTACK_WEBHOOK_SECRET
@@ -65,25 +65,44 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: MAIL_FROM
-        sync: false
+        value: ClashGH <onboarding@resend.dev>   # Resend's shared sender; switch to your domain later
       - key: ADMIN_ALERT_EMAIL
         sync: false
       - key: CORS_ORIGINS
-        sync: false            # admin panel origin, e.g. https://admin.clashgh.app
+        value: https://clashgh-admin.onrender.com   # admin panel origin; change when you add a custom domain
       - key: ANDROID_SHA256_FINGERPRINTS
         sync: false            # signing cert fingerprints for /.well-known/assetlinks.json (see clashgh/RELEASE.md)
       # Baked into the web app at build time (npm run web:export). Must match the API.
       - key: EXPO_PUBLIC_API_URL
-        value: https://clashgh.app/api
+        value: /api          # same origin as the API, works on onrender.com and on a custom domain
       - key: EXPO_PUBLIC_AUTH_MODE
         value: supabase
       - key: EXPO_PUBLIC_PAYSTACK_MODE
         value: live
       - key: EXPO_PUBLIC_SUPABASE_URL
-        sync: false
+        value: https://hrfqgmvnoavyxpumjbad.supabase.co
       - key: EXPO_PUBLIC_SUPABASE_ANON_KEY
-        sync: false
+        value: sb_publishable_Lmc0Pzrz9TBIICKVYPAQrA_sZABwgYe
       - key: EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID
-        sync: false
+        value: 1095848345509-ke2or1o0tb0jkiqr5udcqi440gl59j80.apps.googleusercontent.com
       - key: EXPO_NO_TELEMETRY
         value: "1"
+
+  # Admin panel: static Vite build, talks to the API above cross-origin.
+  # URL will be https://clashgh-admin.onrender.com (matches CORS_ORIGINS above).
+  - type: web
+    name: clashgh-admin
+    runtime: static
+    rootDir: clashgh/admin
+    branch: arena/01a0a65e-clashgh-app
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://clashgh.onrender.com/api   # change to https://<your domain>/api once you have one
+      - key: VITE_AUTH_MODE
+        value: supabase
+      - key: VITE_SUPABASE_URL
+        value: https://hrfqgmvnoavyxpumjbad.supabase.co
+      - key: VITE_SUPABASE_ANON_KEY
+        value: sb_publishable_Lmc0Pzrz9TBIICKVYPAQrA_sZABwgYe

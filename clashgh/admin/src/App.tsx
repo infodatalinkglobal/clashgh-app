@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, setOnUnauthorized, token, type Overview, type Profile } from './lib/api';
 import { Login } from './pages/Login';
+import { takeTokenFromUrl } from './lib/supabase';
 import { OverviewPage } from './pages/Overview';
 import { TournamentsPage } from './pages/Tournaments';
 import { TournamentPage } from './pages/Tournament';
@@ -36,6 +37,12 @@ function parseHash(): Route {
 
 export function go(r: Route) {
   location.hash = r.page === 'tournament' ? `/tournaments/${r.id}` : `/${r.page}`;
+}
+
+// An OAuth redirect lands here with #access_token=...; store it before anything renders.
+{
+  const t = takeTokenFromUrl();
+  if (t) token.set(t);
 }
 
 export default function App() {
